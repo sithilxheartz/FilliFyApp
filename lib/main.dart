@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dashboard.dart';
+import 'userRegistration.dart'; // Import RegistrationPage
 
 void main() {
   runApp(const FillingStationApp());
@@ -106,6 +107,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
 
+                  // Email and Password fields
                   _buildTextField(
                     controller: _emailController,
                     hintText: "Email",
@@ -143,6 +145,25 @@ class _LoginPageState extends State<LoginPage> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+
+                  // Link to Registration page
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) =>
+                                  RegistrationPage(), // Navigate to RegistrationPage
+                        ),
+                      );
+                    },
+                    child: Text(
+                      "Don't have an account? Register",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
                   const SizedBox(height: 20),

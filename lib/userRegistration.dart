@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'main.dart'; // Import the login page
 
 class RegistrationPage extends StatefulWidget {
@@ -11,6 +13,39 @@ class _RegistrationPageState extends State<RegistrationPage> {
   TextEditingController _nameController = TextEditingController();
   TextEditingController _emailController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
+
+  Future<void> registerUser() async {
+    final String apiUrl = "http://192.168.1.5:5000/register"; // Change for real device
+
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("All fields are required")),
+      );
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse(apiUrl),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": _emailController.text.trim(),
+        "password": _passwordController.text
+      }),
+    );
+
+    final responseData = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(responseData["message"])),
+      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(responseData["message"])),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,17 +108,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   SizedBox(height: 25),
 
                   ElevatedButton(
-                    onPressed: () {
-                      // For now, just navigate back to login page
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) =>
-                                  LoginPage(), // Navigate back to login page
-                        ),
-                      );
-                    },
+                    onPressed: registerUser, // Call backend
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.blue.shade900,
@@ -110,7 +135,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => LoginPage(), // Go to LoginPage
+                          builder: (context) => LoginPage(),
                         ),
                       );
                     },
@@ -148,20 +173,19 @@ class _RegistrationPageState extends State<RegistrationPage> {
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
         ),
-        suffixIcon:
-            isPassword
-                ? IconButton(
-                  icon: Icon(
-                    _obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                )
-                : null,
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureText = !_obscureText;
+                  });
+                },
+              )
+            : null,
       ),
     );
   }

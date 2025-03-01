@@ -41,7 +41,7 @@ app.post("/register", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     db.query(
-      "INSERT INTO users (email, password) VALUES (?, ?)",
+      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
       [email, hashedPassword],
       (err, result) => {
         if (err) {

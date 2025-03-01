@@ -1,11 +1,59 @@
 import 'package:flutter/material.dart';
-import 'main.dart';
-import 'shiftsViewPage.dart';
-import 'managementMenu.dart';
-import 'fuelStockPage.dart';
+import 'package:http/http.dart' as http; // Add http package
+import 'dart:convert'; // To parse the response
+import 'main.dart'; // Import LoginPage
+import 'shiftsViewPage.dart'; // ShiftSchedulePage
+import 'managementMenu.dart'; // ManagementMenu
+import 'fuelStockPage.dart'; // FuelStock
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  _DashboardPageState createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  String? userName;
+  String? userEmail;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
+
+  // Function to fetch user profile from backend
+  Future<void> _fetchUserProfile() async {
+    final token = await _getTokenFromStorage(); // Replace with your method to get the token
+
+    if (token != null) {
+      final response = await http.get(
+        Uri.parse('http://192.168.1.5:5000/profile'), // Change to your API URL
+        headers: {
+          'Authorization': 'Bearer $token', // Include the JWT token in header
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          userName = data['user']['email']; // Adjust based on your API response
+          userEmail = data['user']['email']; // Adjust based on your API response
+        });
+      } else {
+        // Handle failure
+        print('Failed to fetch user profile');
+      }
+    }
+  }
+
+  // Dummy method to get the token. Replace with your actual method.
+  Future<String?> _getTokenFromStorage() async {
+    // For example, using SharedPreferences, SecureStorage, etc.
+    // Here we return a dummy token for illustration purposes.
+    return 'your-jwt-token';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,37 +65,69 @@ class DashboardPage extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 20,
-          mainAxisSpacing: 20,
+        child: Column(
           children: [
-            _buildMenuItem(
-              context,
-              Icons.oil_barrel_rounded,
-              "Oil Shop",
-              SalesPage(),
+            // Displaying user profile if available
+            if (userName != null && userEmail != null)
+              Column(
+                children: [
+                  Text(
+                    'Welcome, $userName!',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Email: $userEmail',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  SizedBox(height: 20),
+                ],
+              ),
+            // Grid of menu items
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 20,
+                mainAxisSpacing: 20,
+                children: [
+                  _buildMenuItem(
+                    context,
+                    Icons.oil_barrel_rounded,
+                    "Oil Shop",
+                    SalesPage(),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    Icons.local_gas_station,
+                    "Fuel Stock",
+                    FuelStock(),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    Icons.timelapse,
+                    "Shifts",
+                    ShiftSchedulePage(),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    Icons.settings,
+                    "Management",
+                    ManagementMenu(),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    Icons.bar_chart,
+                    "Reports",
+                    ReportsPage(),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    Icons.logout,
+                    "Logout",
+                    LoginPage(),
+                  ),
+                ],
+              ),
             ),
-            _buildMenuItem(
-              context,
-              Icons.local_gas_station,
-              "Fuel Stock",
-              FuelStock(),
-            ),
-            _buildMenuItem(
-              context,
-              Icons.timelapse,
-              "Shifts",
-              ShiftSchedulePage(),
-            ),
-            _buildMenuItem(
-              context,
-              Icons.settings,
-              "Management",
-              ManagementMenu(),
-            ),
-            _buildMenuItem(context, Icons.bar_chart, "Reports", ReportsPage()),
-            _buildMenuItem(context, Icons.logout, "Logout", LoginPage()),
           ],
         ),
       ),

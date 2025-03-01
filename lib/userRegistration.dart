@@ -1,26 +1,16 @@
 import 'package:flutter/material.dart';
-import 'dashboard.dart';
-import 'userRegistration.dart'; // Import RegistrationPage
+import 'main.dart'; // Import the login page
 
-void main() {
-  runApp(FillingStationApp());
-}
-
-class FillingStationApp extends StatelessWidget {
+class RegistrationPage extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(debugShowCheckedModeBanner: false, home: LoginPage());
-  }
+  _RegistrationPageState createState() => _RegistrationPageState();
 }
 
-// --------------------- LOGIN PAGE ---------------------
-class LoginPage extends StatefulWidget {
-  @override
-  _LoginPageState createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
+class _RegistrationPageState extends State<RegistrationPage> {
   bool _obscureText = true;
+  TextEditingController _nameController = TextEditingController();
+  TextEditingController _emailController = TextEditingController();
+  TextEditingController _passwordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
                   Icon(Icons.local_gas_station, size: 80, color: Colors.white),
                   SizedBox(height: 20),
                   Text(
-                    "Filling Station Management",
+                    "Filling Station Management - Registration",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 24,
@@ -55,14 +45,27 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   SizedBox(height: 30),
 
-                  // Email and Password fields
+                  // Name field
                   _buildTextField(
+                    controller: _nameController,
+                    hintText: "Name",
+                    icon: Icons.person,
+                    isPassword: false,
+                  ),
+                  SizedBox(height: 15),
+
+                  // Email field
+                  _buildTextField(
+                    controller: _emailController,
                     hintText: "Email",
                     icon: Icons.email,
                     isPassword: false,
                   ),
                   SizedBox(height: 15),
+
+                  // Password field
                   _buildTextField(
+                    controller: _passwordController,
                     hintText: "Password",
                     icon: Icons.lock,
                     isPassword: true,
@@ -71,10 +74,13 @@ class _LoginPageState extends State<LoginPage> {
 
                   ElevatedButton(
                     onPressed: () {
+                      // For now, just navigate back to login page
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => DashboardPage(),
+                          builder:
+                              (context) =>
+                                  LoginPage(), // Navigate back to login page
                         ),
                       );
                     },
@@ -91,7 +97,7 @@ class _LoginPageState extends State<LoginPage> {
                       elevation: 5,
                     ),
                     child: Text(
-                      "Login",
+                      "Register",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -99,21 +105,17 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   SizedBox(height: 20),
-
-                  // Link to Registration page
                   TextButton(
                     onPressed: () {
-                      Navigator.push(
+                      Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder:
-                              (context) =>
-                                  RegistrationPage(), // Navigate to RegistrationPage
+                          builder: (context) => LoginPage(), // Go to LoginPage
                         ),
                       );
                     },
                     child: Text(
-                      "Don't have an account? Register",
+                      "Already have an account? Login",
                       style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
@@ -127,11 +129,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildTextField({
+    required TextEditingController controller,
     required String hintText,
     required IconData icon,
     required bool isPassword,
   }) {
     return TextField(
+      controller: controller,
       obscureText: isPassword ? _obscureText : false,
       style: TextStyle(color: Colors.white),
       decoration: InputDecoration(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class RequestShiftChangePage extends StatefulWidget {
+  const RequestShiftChangePage({super.key});
+
   @override
   _RequestShiftChangePageState createState() => _RequestShiftChangePageState();
 }

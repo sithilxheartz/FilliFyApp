@@ -4,7 +4,7 @@ class UpdateShiftPage extends StatefulWidget {
   final DateTime selectedDate;
   final Map<String, List<String>> shiftData;
 
-  UpdateShiftPage({required this.selectedDate, required this.shiftData});
+  const UpdateShiftPage({super.key, required this.selectedDate, required this.shiftData});
 
   @override
   _UpdateShiftPageState createState() => _UpdateShiftPageState();

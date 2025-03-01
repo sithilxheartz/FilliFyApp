@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ManagementMenu extends StatelessWidget {
+  const ManagementMenu({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

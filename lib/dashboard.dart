@@ -4,6 +4,8 @@ import 'shiftsViewPage.dart';
 import 'managementMenu.dart';
 
 class DashboardPage extends StatelessWidget {
+  const DashboardPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,6 +97,8 @@ class DashboardPage extends StatelessWidget {
 
 // --------------------- FUEL STOCK PAGE ---------------------
 class FuelStockPage extends StatelessWidget {
+  const FuelStockPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return _buildPage(context, "Fuel Stock");
@@ -103,6 +107,8 @@ class FuelStockPage extends StatelessWidget {
 
 // --------------------- SALES PAGE ---------------------
 class SalesPage extends StatelessWidget {
+  const SalesPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return _buildPage(context, "Sales");
@@ -111,6 +117,8 @@ class SalesPage extends StatelessWidget {
 
 // --------------------- REPORTS PAGE ---------------------
 class ReportsPage extends StatelessWidget {
+  const ReportsPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return _buildPage(context, "Reports");
@@ -119,6 +127,8 @@ class ReportsPage extends StatelessWidget {
 
 // --------------------- EMPLOYEE MANAGEMENT PAGE ---------------------
 class EmployeePage extends StatefulWidget {
+  const EmployeePage({super.key});
+
   @override
   _EmployeePageState createState() => _EmployeePageState();
 }
@@ -232,6 +242,8 @@ class _EmployeePageState extends State<EmployeePage> {
 
 // --------------------- SETTINGS PAGE ---------------------
 class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return _buildPage(context, "Settings");

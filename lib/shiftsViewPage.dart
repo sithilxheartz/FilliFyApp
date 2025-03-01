@@ -4,6 +4,8 @@ import 'shiftHistoryPage.dart';
 import 'shiftRequestPage.dart';
 
 class ShiftSchedulePage extends StatefulWidget {
+  const ShiftSchedulePage({super.key});
+
   @override
   _ShiftSchedulePageState createState() => _ShiftSchedulePageState();
 }

@@ -32,9 +32,9 @@ const SECRET_KEY = "fillify";
 
 // register path
 app.post("/register", async (req, res) => {
-  const { email, password } = req.body;
+  const {name, email, password } = req.body;
 
-  if (!email || !password) {
+  if (!name || !email || !password) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
@@ -42,7 +42,7 @@ app.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     db.query(
       "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-      [email, hashedPassword],
+      [name, email, hashedPassword],
       (err, result) => {
         if (err) {
           return res.status(500).json({ message: "User already exists" });

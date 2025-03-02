@@ -17,7 +17,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
   Future<void> registerUser() async {
     final String apiUrl = "http://192.168.1.5:5000/register"; // Change for real device
 
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("All fields are required")),
       );
@@ -28,6 +28,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       Uri.parse(apiUrl),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
+        "name":_nameController.text,
         "email": _emailController.text.trim(),
         "password": _passwordController.text
       }),

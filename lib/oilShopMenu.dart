@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hiiitest/dashboard.dart';
+import 'dashboard.dart';
 import 'productMenu.dart';
 import 'productUpdateStock.dart';
 import 'productAddNew.dart';

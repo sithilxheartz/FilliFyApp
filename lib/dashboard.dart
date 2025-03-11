@@ -64,6 +64,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Dashboard", style: TextStyle(color: Colors.white)),
+        leading: Icon(Icons.arrow_back, color: Colors.blue.shade900),
         centerTitle: true,
         backgroundColor: Colors.blue.shade900,
       ),

@@ -16,7 +16,7 @@ const db = mysql.createConnection({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASS || "",
-  database: process.env.DB_NAME || "filling_station_db",
+  database: process.env.DB_NAME || "FillingStationDB",
 });
 
 db.connect((err) => {
@@ -27,21 +27,24 @@ db.connect((err) => {
   }
 });
 
-// Secret key for JWT
+// Secret Key for JWT
 const SECRET_KEY = "fillify";
 
-// register path
-app.post("/register", async (req, res) => {
-  const {name, email, password } = req.body;
 
-  if (!name || !email || !password) {
+// ==================== USER AUTHENTICATION ====================
+
+// Register User
+app.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!email || !password) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     db.query(
-      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+      "INSERT INTO Users (name, email, password) VALUES (?, ?, ?)",
       [name, email, hashedPassword],
       (err, result) => {
         if (err) {
@@ -55,15 +58,11 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// login path
+// User Login
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-
-  db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results) => {
+  db.query("SELECT * FROM Users WHERE email = ?", [email], async (err, results) => {
     if (err || results.length === 0) {
       return res.status(401).json({ message: "User not found" });
     }
@@ -75,13 +74,13 @@ app.post("/login", (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: "1h" });
+    const token = jwt.sign({ id: user.userID, email: user.email }, SECRET_KEY, { expiresIn: "1h" });
 
     res.json({ message: "Login successful", token });
   });
 });
 
-// get user details
+// Get User Profile (Protected)
 app.get("/profile", (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
 
@@ -93,10 +92,60 @@ app.get("/profile", (req, res) => {
     if (err) {
       return res.status(403).json({ message: "Invalid token" });
     }
-    res.json({ message: "Profile fetched", user: decoded });
+    db.query("SELECT name, email FROM Users WHERE userID = ?", [decoded.id], (err, result) => {
+      if (err || result.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ message: "Profile fetched", user: result[0] });
+    });
   });
 });
 
+// ==================== CRUD OPERATIONS ====================
+
+// Get All Inventory
+app.get("/inventory", (req, res) => {
+  db.query("SELECT * FROM Inventory", (err, result) => {
+    if (err) return res.status(500).json({ message: "Error fetching inventory" });
+    res.json(result);
+  });
+});
+
+// Add New Product to Inventory
+app.post("/inventory", (req, res) => {
+  const { productName, stockQuantity, speedType } = req.body;
+  db.query(
+    "INSERT INTO Inventory (productName, stockQuantity, speedType) VALUES (?, ?, ?)",
+    [productName, stockQuantity, speedType],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Error adding product" });
+      res.json({ message: "Product added successfully" });
+    }
+  );
+});
+
+// Update Inventory
+app.put("/inventory/:id", (req, res) => {
+  const { stockQuantity } = req.body;
+  db.query(
+    "UPDATE Inventory SET stockQuantity = ? WHERE productID = ?",
+    [stockQuantity, req.params.id],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Error updating inventory" });
+      res.json({ message: "Inventory updated successfully" });
+    }
+  );
+});
+
+// Delete Inventory Item
+app.delete("/inventory/:id", (req, res) => {
+  db.query("DELETE FROM Inventory WHERE productID = ?", [req.params.id], (err, result) => {
+    if (err) return res.status(500).json({ message: "Error deleting inventory item" });
+    res.json({ message: "Inventory item deleted successfully" });
+  });
+});
+
+// ==================== SERVER LISTENING ====================
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

@@ -25,11 +25,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // Function to fetch user profile from backend
   Future<void> _fetchUserProfile() async {
-    final token = await _getTokenFromStorage(); // Replace with your method to get the token
+    final token =
+        await _getTokenFromStorage(); // Replace with your method to get the token
 
     if (token != null) {
       final response = await http.get(
-        Uri.parse('http://192.168.1.5:5000/profile'), // Change to your API URL
+        Uri.parse(
+          'http://10.16.142.141:5000/profile',
+        ), // Change to your API URL
         headers: {
           'Authorization': 'Bearer $token', // Include the JWT token in header
         },
@@ -39,7 +42,8 @@ class _DashboardPageState extends State<DashboardPage> {
         final data = json.decode(response.body);
         setState(() {
           userName = data['user']['email']; // Adjust based on your API response
-          userEmail = data['user']['email']; // Adjust based on your API response
+          userEmail =
+              data['user']['email']; // Adjust based on your API response
         });
       } else {
         // Handle failure
@@ -119,12 +123,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     "Reports",
                     ReportsPage(),
                   ),
-                  _buildMenuItem(
-                    context,
-                    Icons.logout,
-                    "Logout",
-                    LoginPage(),
-                  ),
+                  _buildMenuItem(context, Icons.logout, "Logout", LoginPage()),
                 ],
               ),
             ),

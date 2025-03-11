@@ -6,7 +6,7 @@ class FuelStock extends StatefulWidget {
 }
 
 class _FuelStockState extends State<FuelStock> {
-  List<double> fuelLevels = [0.71, 0.44, 0.49, 0.64, 0.18, 0.89];
+  List<double> fuelLevels = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
   final double tankCapacity = 13000;
 
   void updateFuelLevels(List<double> newLevels) {

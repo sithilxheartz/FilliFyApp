@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'fuelStockCalibrate.dart';
+import 'fuelStockAdd.dart';
+import 'fuelSalesAdd.dart';
+import 'dashboard.dart';
 
 class FuelStock extends StatefulWidget {
   @override
@@ -17,18 +21,9 @@ class _FuelStockState extends State<FuelStock> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Fuel Stock", style: TextStyle(color: Colors.white)),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context); // Correct back navigation
-          },
-        ),
-        backgroundColor: Colors.blue.shade900,
-      ),
-      body: HomePage(updateFuelLevels, fuelLevels, tankCapacity),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(updateFuelLevels, fuelLevels, tankCapacity),
     );
   }
 }
@@ -43,6 +38,19 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text("Fuel Stock", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blue.shade900,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => DashboardPage()),
+            );
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: GridView.count(
@@ -59,8 +67,20 @@ class HomePage extends StatelessWidget {
             _buildMenuItem(
               context,
               Icons.update,
-              "Update Fuel Stock",
-              UpdateStockPage(updateFuelLevels, fuelLevels, tankCapacity),
+              "Calibrate Tanks",
+              CalibratePage(updateFuelLevels, fuelLevels, tankCapacity),
+            ),
+            _buildMenuItem(
+              context,
+              Icons.add,
+              "Add Stock",
+              AddStockPage(updateFuelLevels, fuelLevels, tankCapacity),
+            ),
+            _buildMenuItem(
+              context,
+              Icons.file_copy,
+              "Add Sales",
+              AddSalesPage(updateFuelLevels, fuelLevels, tankCapacity),
             ),
           ],
         ),
@@ -75,9 +95,11 @@ class HomePage extends StatelessWidget {
     Widget page,
   ) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => page));
-      },
+      onTap:
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => page),
+          ),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.blue.shade50,
@@ -191,126 +213,6 @@ class FuelStockPage extends StatelessWidget {
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class UpdateStockPage extends StatefulWidget {
-  final Function(List<double>) updateFuelLevels;
-  final List<double> fuelLevels;
-  final double tankCapacity;
-
-  UpdateStockPage(this.updateFuelLevels, this.fuelLevels, this.tankCapacity);
-
-  @override
-  _UpdateStockPageState createState() => _UpdateStockPageState();
-}
-
-class _UpdateStockPageState extends State<UpdateStockPage> {
-  List<TextEditingController> controllers = [];
-
-  @override
-  void initState() {
-    super.initState();
-    controllers = List.generate(
-      widget.fuelLevels.length,
-      (index) => TextEditingController(
-        text: (widget.fuelLevels[index] * widget.tankCapacity).toString(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Fuel Stock", style: TextStyle(color: Colors.white)),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context); // Navigate back to the previous screen
-          },
-        ),
-        backgroundColor: Colors.blue.shade900,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Update Fuel Stock",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: widget.fuelLevels.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.teal.shade300, width: 1),
-                    ),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Tank 0${index + 1}:",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(height: 8),
-                          TextField(
-                            controller: controllers[index],
-                            decoration: InputDecoration(
-                              hintText: "Liters",
-                              filled: true,
-                              fillColor: Colors.grey.shade300,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                          SizedBox(height: 1),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                List<double> newLevels =
-                    controllers.map((controller) {
-                      double liters = double.tryParse(controller.text) ?? 0;
-                      return (liters / widget.tankCapacity).clamp(0.0, 1.0);
-                    }).toList();
-                widget.updateFuelLevels(newLevels);
-                Navigator.pop(context);
-              },
-              child: Text(
-                "Update Stock",
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade900, // Corrected here
-                padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );

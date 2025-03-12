@@ -1,57 +1,53 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'main.dart'; // Import the login page
-
+import 'main.dart'; // Import LoginPage
 
 class RegistrationPage extends StatefulWidget {
+  const RegistrationPage({super.key});
+
   @override
   _RegistrationPageState createState() => _RegistrationPageState();
 }
 
 class _RegistrationPageState extends State<RegistrationPage> {
   bool _obscureText = true;
-  TextEditingController _nameController = TextEditingController();
-  TextEditingController _emailController = TextEditingController();
-  TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   Future<void> registerUser() async {
-    final String apiUrl =
-        "http://10.16.142.141:5000/register"; // Change for real device
+    setState(() => _isLoading = true);
 
-    if (_nameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("All fields are required")));
-      return;
-    }
+    final String apiUrl = "http://10.0.2.2:5000/register";
 
     final response = await http.post(
       Uri.parse(apiUrl),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
-        "name": _nameController.text,
+        "name": _nameController.text.trim(),
         "email": _emailController.text.trim(),
-        "password": _passwordController.text,
+        "password": _passwordController.text
       }),
     );
+
+    setState(() => _isLoading = false);
 
     final responseData = jsonDecode(response.body);
 
     if (response.statusCode == 201) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(responseData["message"])));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(responseData["message"])),
+      );
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => LoginPage()),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(responseData["message"])));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(responseData["message"])),
+      );
     }
   }
 
@@ -115,26 +111,20 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   ),
                   SizedBox(height: 25),
 
-                  ElevatedButton(
-                    onPressed: registerUser, // Call backend
+                  _isLoading
+                      ? CircularProgressIndicator(color: Colors.white)
+                      : ElevatedButton(
+                    onPressed: registerUser,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.blue.shade900,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 100,
-                        vertical: 15,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 100, vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                       elevation: 5,
                     ),
                     child: Text(
                       "Register",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                   SizedBox(height: 20),
@@ -175,24 +165,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
         hintStyle: TextStyle(color: Colors.white70),
         filled: true,
         fillColor: Colors.white.withOpacity(0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
-        ),
-        suffixIcon:
-            isPassword
-                ? IconButton(
-                  icon: Icon(
-                    _obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                )
-                : null,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+        suffixIcon: isPassword
+            ? IconButton(
+          icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.white),
+          onPressed: () => setState(() => _obscureText = !_obscureText),
+        )
+            : null,
       ),
     );
   }

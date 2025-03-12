@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard.dart';
 import 'userRegistration.dart'; // Import RegistrationPage
 
@@ -44,7 +45,7 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    var url = Uri.parse("http://10.16.142.141:5000/login");
+    var url = Uri.parse("http://10.0.2.2:5000/login");
     var response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
@@ -58,7 +59,12 @@ class _LoginPageState extends State<LoginPage> {
     var data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
+      // Save the JWT token in SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', data["token"]);
+
       _showMessage("Login successful");
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => DashboardPage()),
@@ -69,9 +75,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -94,63 +98,34 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.local_gas_station,
-                    size: 80,
-                    color: Colors.white,
-                  ),
+                  const Icon(Icons.local_gas_station, size: 80, color: Colors.white),
                   const SizedBox(height: 20),
                   const Text(
                     "Filling Station Management",
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const SizedBox(height: 30),
 
                   // Email and Password fields
-                  _buildTextField(
-                    controller: _emailController,
-                    hintText: "Email",
-                    icon: Icons.email,
-                    isPassword: false,
-                  ),
+                  _buildTextField(_emailController, "Email", Icons.email, false),
                   const SizedBox(height: 15),
-                  _buildTextField(
-                    controller: _passwordController,
-                    hintText: "Password",
-                    icon: Icons.lock,
-                    isPassword: true,
-                  ),
+                  _buildTextField(_passwordController, "Password", Icons.lock, true),
                   const SizedBox(height: 25),
 
                   _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : ElevatedButton(
-                        onPressed: loginUser,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.blue.shade900,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 100,
-                            vertical: 15,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          elevation: 5,
-                        ),
-                        child: const Text(
-                          "Login",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                    onPressed: loginUser,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.blue.shade900,
+                      padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      elevation: 5,
+                    ),
+                    child: const Text("Login", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
                   SizedBox(height: 20),
 
                   // Link to Registration page
@@ -158,17 +133,10 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) =>
-                                  RegistrationPage(), // Navigate to RegistrationPage
-                        ),
+                        MaterialPageRoute(builder: (context) => RegistrationPage()),
                       );
                     },
-                    child: Text(
-                      "Don't have an account? Register",
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
+                    child: Text("Don't have an account? Register", style: TextStyle(fontSize: 16, color: Colors.white)),
                   ),
                   const SizedBox(height: 20),
                 ],
@@ -180,12 +148,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hintText,
-    required IconData icon,
-    required bool isPassword,
-  }) {
+  Widget _buildTextField(TextEditingController controller, String hintText, IconData icon, bool isPassword) {
     return TextField(
       controller: controller,
       obscureText: isPassword ? _obscureText : false,
@@ -196,24 +159,13 @@ class _LoginPageState extends State<LoginPage> {
         hintStyle: const TextStyle(color: Colors.white70),
         filled: true,
         fillColor: Colors.white.withOpacity(0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
-        ),
-        suffixIcon:
-            isPassword
-                ? IconButton(
-                  icon: Icon(
-                    _obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                )
-                : null,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+        suffixIcon: isPassword
+            ? IconButton(
+          icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.white),
+          onPressed: () => setState(() => _obscureText = !_obscureText),
+        )
+            : null,
       ),
     );
   }

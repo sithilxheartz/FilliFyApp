@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'oilShopMenu.dart';
 
 class ManagementMenu extends StatelessWidget {
   const ManagementMenu({super.key});
@@ -33,11 +34,10 @@ class ManagementMenu extends StatelessWidget {
               EmployeePage(),
             ),
             _buildMenuItem(
-              context,
-              Icons.oil_barrel_sharp,
-              "Add Products",
-              EmployeePage(),
-            ),
+                context,
+                Icons.oil_barrel,
+                "Oil Shop",
+                OilShopApp()),
           ],
         ),
       ),

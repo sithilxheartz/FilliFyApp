@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'oilShopMenu.dart';
+import 'ProductDetails.dart';
+
+
 
 class ProductMenu extends StatelessWidget {
   final List<Map<String, String>> products;

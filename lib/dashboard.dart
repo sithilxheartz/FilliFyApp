@@ -16,6 +16,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   String? userName;
   String? userEmail;
+  String? userRole; // Store user role
   List<double> fuelLevels = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 
   @override
@@ -27,13 +28,17 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _fetchUserProfile() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
+    String? role = prefs.getString('role'); // Retrieve role
 
     if (token == null) {
-      // No token found, redirect to LoginPage
       if (!mounted) return;
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
       return;
     }
+
+    setState(() {
+      userRole = role; // Set the user role
+    });
 
     try {
       final response = await http.get(
@@ -61,7 +66,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token'); // Clear stored token
+    await prefs.remove('token');
+    await prefs.remove('role'); // Remove role on logout
     if (!mounted) return;
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
   }
@@ -79,6 +85,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: [
                   Text('Welcome, $userName!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   Text('Email: $userEmail', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                  Text('Role: ${userRole ?? "Unknown"}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
                   SizedBox(height: 20),
                 ],
               ),
@@ -87,13 +94,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
-                children: [
-                  _buildMenuItem(context, Icons.local_gas_station, "Fuel Stock", FuelStockPage(fuelLevels)),
-                  _buildMenuItem(context, Icons.settings, "Management", ManagementMenu()),
-                  _buildMenuItem(context, Icons.oil_barrel, "Oil Shop", OilShopApp()),
-                  _buildMenuItem(context, Icons.work, "Shifts View", ShiftSchedulePage()),
-                  _buildMenuItem(context, Icons.logout, "Logout", null, isLogout: true),
-                ],
+                children: _buildMenuItems(),
               ),
             ),
           ],
@@ -102,25 +103,45 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  List<Widget> _buildMenuItems() {
+    List<Widget> menuItems = [
+      _buildMenuItem(context, Icons.local_gas_station, "Fuel Stock", FuelStockPage(fuelLevels)),
+      _buildMenuItem(context, Icons.oil_barrel, "Oil Shop", OilShopApp()),
+      _buildMenuItem(context, Icons.work, "Shifts View", ShiftSchedulePage()),
+    ];
+
+    if (userRole == "admin") {
+      // Only admins can see these options
+      menuItems.add(_buildMenuItem(context, Icons.settings, "Management", ManagementMenu()));
+    }
+
+    menuItems.add(_buildMenuItem(context, Icons.logout, "Logout", null, isLogout: true));
+
+    return menuItems;
+  }
+
   Widget _buildMenuItem(BuildContext context, IconData icon, String label, Widget? page, {bool isLogout = false}) {
     return GestureDetector(
       onTap: () {
         if (isLogout) {
           _logout();
         } else if (page != null) {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => page));
+          Navigator.push(context, MaterialPageRoute(builder: (context) => page));
         }
       },
       child: Container(
-        decoration: BoxDecoration(color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(20)),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 50, color: Colors.blue.shade900),
-          SizedBox(height: 10),
-          Text(label,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ]),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 50, color: Colors.blue.shade900),
+            SizedBox(height: 10),
+            Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }

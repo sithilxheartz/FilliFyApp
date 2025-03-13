@@ -59,9 +59,9 @@ class _LoginPageState extends State<LoginPage> {
     var data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      // Save the JWT token in SharedPreferences
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', data["token"]);
+      await prefs.setString('role', data["role"]); // Store user role
 
       _showMessage("Login successful");
 

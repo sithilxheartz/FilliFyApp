@@ -74,11 +74,17 @@ app.post("/login", (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user.userID, email: user.email }, SECRET_KEY, { expiresIn: "1h" });
+    // Generate JWT token including role
+    const token = jwt.sign(
+      { id: user.userID, email: user.email, role: user.role }, 
+      SECRET_KEY, 
+      { expiresIn: "1h" }
+    );
 
-    res.json({ message: "Login successful", token });
+    res.json({ message: "Login successful", token, role: user.role });
   });
 });
+
 
 // Get User Profile (Protected)
 app.get("/profile", (req, res) => {

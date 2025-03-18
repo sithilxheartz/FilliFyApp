@@ -116,16 +116,120 @@ app.get("/inventory", (req, res) => {
     res.json(result);
   });
 });
+//get fuel stock data
+app.get("/fuel-stock", (req, res) => {
+  const { date } = req.query;  // Get date from query parameter (optional)
+
+  let query = `
+    SELECT a.date, t.tankID, t.fueltype, t.capacity, 
+           COALESCE(a.liters_in_tank_1, 0) AS liters_in_tank_1,
+           COALESCE(a.liters_in_tank_2, 0) AS liters_in_tank_2,
+           COALESCE(a.liters_in_tank_3, 0) AS liters_in_tank_3,
+           COALESCE(a.liters_in_tank_4, 0) AS liters_in_tank_4,
+           COALESCE(a.liters_in_tank_5, 0) AS liters_in_tank_5,
+           COALESCE(a.liters_in_tank_6, 0) AS liters_in_tank_6
+    FROM fueltank t 
+    LEFT JOIN (
+      SELECT * FROM fuelavailability 
+      WHERE ${date ? `DATE(date) = '${date}'` : `1=1`}
+      ORDER BY date DESC LIMIT 1
+    ) a 
+    ON 1=1
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: "Error fetching fuel stock", error: err });
+    }
+
+    if (results.length === 0 || !results[0].date) {
+      // Fetch the LATEST available fuel data instead
+      db.query(`
+        SELECT a.date, t.tankID, t.fueltype, t.capacity, 
+               COALESCE(a.liters_in_tank_1, 0) AS liters_in_tank_1,
+               COALESCE(a.liters_in_tank_2, 0) AS liters_in_tank_2,
+               COALESCE(a.liters_in_tank_3, 0) AS liters_in_tank_3,
+               COALESCE(a.liters_in_tank_4, 0) AS liters_in_tank_4,
+               COALESCE(a.liters_in_tank_5, 0) AS liters_in_tank_5,
+               COALESCE(a.liters_in_tank_6, 0) AS liters_in_tank_6
+        FROM fueltank t 
+        LEFT JOIN (SELECT * FROM fuelavailability ORDER BY date DESC LIMIT 1) a 
+        ON 1=1
+      `, (err, latestResults) => {
+        if (err) {
+          return res.status(500).json({ message: "Error fetching latest fuel stock", error: err });
+        }
+
+        if (latestResults.length === 0) {
+          return res.json({ message: "No fuel data available" });
+        }
+
+        const latestDate = latestResults[0].date;  // Store the latest date
+        const latestFuelStock = latestResults.map((row, index) => ({
+          date: latestDate,
+          tankID: row.tankID,
+          fuelType: row.fueltype,
+          capacity: row.capacity,
+          availableLiters: row[`liters_in_tank_${index + 1}`] || 0,  // Default to 0 if no fuel data
+        }));
+
+        res.json(latestFuelStock);
+      });
+    } else {
+      // Return the originally fetched data
+      const dateAvailable = results[0].date;  // Get the latest date from DB
+      const fuelStock = results.map((row, index) => ({
+        date: dateAvailable,
+        tankID: row.tankID,
+        fuelType: row.fueltype,
+        capacity: row.capacity,
+        availableLiters: row[`liters_in_tank_${index + 1}`] || 0,  // Default to 0 if no fuel data
+      }));
+
+      res.json(fuelStock);
+    }
+  });
+});
+
+// update fuel stocks
+app.post("/update-fuel-stock", (req, res) => {
+  const { sales } = req.body; // Expecting an array of sales per tank
+
+  if (!sales || !Array.isArray(sales)) {
+    return res.status(400).json({ message: "Invalid sales data" });
+  }
+
+  const updateQueries = sales.map((sale, index) => {
+    return new Promise((resolve, reject) => {
+      db.query(
+        `UPDATE fuelavailability 
+         SET liters_in_tank_${index + 1} = GREATEST(liters_in_tank_${index + 1} - ?, 0)
+         ORDER BY stockID DESC LIMIT 1`,
+        [sale],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        }
+      );
+    });
+  });
+
+  Promise.all(updateQueries)
+    .then(() => res.json({ message: "Fuel stock updated successfully" }))
+    .catch((err) => res.status(500).json({ message: "Error updating fuel stock", error: err }));
+});
+
+
 
 // Add New Product to Inventory
 app.post("/inventory", (req, res) => {
-  const { productName, stockQuantity, speedType } = req.body;
+  const { productName, stockQuantity, price } = req.body;
   db.query(
-    "INSERT INTO Inventory (productName, stockQuantity, speedType) VALUES (?, ?, ?)",
-    [productName, stockQuantity, speedType],
+    "INSERT INTO Inventory (productName, stockQuantity, price) VALUES (?, ?, ?)",
+    [productName, stockQuantity, price],
     (err, result) => {
       if (err) return res.status(500).json({ message: "Error adding product" });
-      res.json({ message: "Product added successfully" });
+      res.status(201).json({ message: "Product added successfully", id: result.insertId });
     }
   );
 });
@@ -150,6 +254,159 @@ app.delete("/inventory/:id", (req, res) => {
     res.json({ message: "Inventory item deleted successfully" });
   });
 });
+
+//update shifts
+app.post("/update-shift", (req, res) => {
+  const { shiftID, nightShift, shiftType } = req.body;
+
+  if (!shiftID || !shiftType) {
+    return res.status(400).json({ message: "Missing shift details" });
+  }
+
+  db.query(
+    "UPDATE shift SET nightShift = ?, shiftType = ? WHERE shiftID = ?",
+    [nightShift, shiftType, shiftID],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: "Error updating shift", error: err });
+      }
+      res.json({ message: "Shift updated successfully" });
+    }
+  );
+});
+
+//add shift history
+app.post("/add-shift-history", (req, res) => {
+  const { date, dayShift, nightShift } = req.body;
+
+  if (!date || !dayShift || !nightShift) {
+    return res.status(400).json({ message: "Missing shift history details" });
+  }
+
+  db.query(
+    `INSERT INTO shifthistory (date, day_pumper_pump_1, day_pumper_pump_2, day_pumper_pump_3, day_pumper_pump_4, night_pumper_pump_1, night_pumper_pump_2) 
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [date, dayShift[0], dayShift[1], dayShift[2], dayShift[3], nightShift[0], nightShift[1]],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: "Error adding shift history", error: err });
+      }
+      res.json({ message: "Shift history added successfully" });
+    }
+  );
+});
+
+//shift change requests
+app.post("/request-shift-change", (req, res) => {
+  const { shiftID, fuelStockID } = req.body;
+
+  if (!shiftID || !fuelStockID) {
+    return res.status(400).json({ message: "Missing request details" });
+  }
+
+  db.query(
+    "INSERT INTO request (shiftID, fuelStockID) VALUES (?, ?)",
+    [shiftID, fuelStockID],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: "Error creating shift change request", error: err });
+      }
+      res.json({ message: "Shift change request submitted successfully" });
+    }
+  );
+});
+
+//add employee
+app.post("/add-employee", (req, res) => {
+  const { name, position, contactNumber, salary } = req.body;
+
+  if (!name || !position || !contactNumber || !salary) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  db.query(
+    "INSERT INTO employee (name, position, contactNumber, salary) VALUES (?, ?, ?, ?)",
+    [name, position, contactNumber, salary],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: "Error adding employee", error: err });
+      }
+      res.json({ message: "Employee added successfully", employeeID: result.insertId });
+    }
+  );
+});
+
+//get employee
+app.get("/get-employees", (req, res) => {
+  db.query("SELECT * FROM employee", (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: "Error fetching employees", error: err });
+    }
+    res.json(result);
+  });
+});
+
+//assign shifts
+app.post("/assign-shift", (req, res) => {
+  const { date, employeeID, shiftType, nightShift, pumpNumber } = req.body;
+
+  if (!date || !employeeID || !shiftType || nightShift === undefined || !pumpNumber) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  const query1 = `
+    INSERT INTO shift (date, shiftType, nightShift, employeeID, pumpNumber)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.query(query1, [date, shiftType, nightShift, employeeID, pumpNumber], (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: "Error assigning shift", error: err });
+    }
+
+    const shiftID = result.insertId; // Get the shift ID
+
+    const query2 = `
+      INSERT INTO shifthistory (shiftID, date, employeeID, pumpNumber, shiftType, nightShift)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(query2, [shiftID, date, employeeID, pumpNumber, shiftType, nightShift], (err) => {
+      if (err) {
+        return res.status(500).json({ message: "Error updating shift history", error: err });
+      }
+      res.status(201).json({ message: "Shift assigned successfully & history updated" });
+    });
+  });
+});
+
+
+
+//get assigned shifts
+app.get("/get-shifts-by-date", (req, res) => {
+  const { date } = req.query;
+
+  if (!date) {
+    return res.status(400).json({ message: "Date is required" });
+  }
+
+  const query = `
+    SELECT s.date, s.shiftType, s.nightShift, s.pumpNumber, e.name AS employeeName
+    FROM shift s
+    LEFT JOIN employee e ON s.employeeID = e.employeeID
+    WHERE s.date = ?
+    ORDER BY s.nightShift ASC, s.pumpNumber ASC;
+  `;
+
+  db.query(query, [date], (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: "Error fetching shifts", error: err });
+    }
+    res.json(result);
+  });
+});
+
+
 
 // ==================== SERVER LISTENING ====================
 app.listen(PORT, () => {

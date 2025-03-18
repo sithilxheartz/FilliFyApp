@@ -19,6 +19,22 @@
 CREATE DATABASE IF NOT EXISTS `fillingstationdb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
 USE `fillingstationdb`;
 
+-- Dumping structure for table fillingstationdb.employee
+CREATE TABLE IF NOT EXISTS `employee` (
+  `employeeID` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `position` enum('Diesel_Pumper','Petrol_Pumper','Manager') NOT NULL DEFAULT 'Diesel_Pumper',
+  `contactNumber` varchar(20) NOT NULL,
+  `salary` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`employeeID`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Dumping data for table fillingstationdb.employee: ~3 rows (approximately)
+INSERT IGNORE INTO `employee` (`employeeID`, `name`, `position`, `contactNumber`, `salary`) VALUES
+	(1, 'Saman Kumara', 'Petrol_Pumper', '123456789', 10000.00),
+	(2, 'John Doe', '', '', 0.00),
+	(3, 'Jane Smith', '', '', 0.00);
+
 -- Dumping structure for table fillingstationdb.fuelavailability
 CREATE TABLE IF NOT EXISTS `fuelavailability` (
   `stockID` int(11) NOT NULL AUTO_INCREMENT,
@@ -30,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `fuelavailability` (
   `liters_in_tank_5` float NOT NULL,
   `liters_in_tank_6` float NOT NULL,
   PRIMARY KEY (`stockID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table fillingstationdb.fuelavailability: ~0 rows (approximately)
 
@@ -66,11 +82,14 @@ CREATE TABLE IF NOT EXISTS `inventory` (
   `productID` int(11) NOT NULL AUTO_INCREMENT,
   `productName` varchar(100) NOT NULL,
   `stockQuantity` int(11) NOT NULL,
-  `speedType` varchar(50) DEFAULT NULL,
+  `price` double NOT NULL DEFAULT 0,
   PRIMARY KEY (`productID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table fillingstationdb.inventory: ~0 rows (approximately)
+-- Dumping data for table fillingstationdb.inventory: ~2 rows (approximately)
+INSERT IGNORE INTO `inventory` (`productID`, `productName`, `stockQuantity`, `price`) VALUES
+	(4, 'Castrol 10W-30', 5, 5500),
+	(7, 'Castrol 10W-20', 10, 4000);
 
 -- Dumping structure for table fillingstationdb.orderdetails
 CREATE TABLE IF NOT EXISTS `orderdetails` (
@@ -143,27 +162,42 @@ CREATE TABLE IF NOT EXISTS `request` (
 -- Dumping structure for table fillingstationdb.shift
 CREATE TABLE IF NOT EXISTS `shift` (
   `shiftID` int(11) NOT NULL AUTO_INCREMENT,
-  `nightShift` tinyint(1) NOT NULL,
-  `shiftType` enum('Diesel_Pumper','Petrol_Pumper','Other') DEFAULT NULL,
-  PRIMARY KEY (`shiftID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `date` date NOT NULL,
+  `shiftType` enum('Diesel_Pumper','Petrol_Pumper','Other') NOT NULL,
+  `nightShift` tinyint(1) NOT NULL DEFAULT 0,
+  `employeeID` int(11) DEFAULT NULL,
+  `pumpNumber` int(11) NOT NULL,
+  PRIMARY KEY (`shiftID`),
+  KEY `employeeID` (`employeeID`),
+  CONSTRAINT `shift_ibfk_1` FOREIGN KEY (`employeeID`) REFERENCES `employee` (`employeeID`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table fillingstationdb.shift: ~0 rows (approximately)
+-- Dumping data for table fillingstationdb.shift: ~4 rows (approximately)
+INSERT IGNORE INTO `shift` (`shiftID`, `date`, `shiftType`, `nightShift`, `employeeID`, `pumpNumber`) VALUES
+	(1, '2025-03-20', 'Diesel_Pumper', 0, 1, 1),
+	(2, '2025-03-20', 'Petrol_Pumper', 1, 2, 2),
+	(3, '2025-03-18', 'Petrol_Pumper', 0, 1, 1),
+	(4, '2025-03-19', 'Petrol_Pumper', 0, 2, 3);
 
 -- Dumping structure for table fillingstationdb.shifthistory
 CREATE TABLE IF NOT EXISTS `shifthistory` (
-  `shiftID` int(11) NOT NULL AUTO_INCREMENT,
-  `date` datetime DEFAULT current_timestamp(),
-  `day_pumper_pump_1` varchar(255) NOT NULL,
-  `day_pumper_pump_2` varchar(255) NOT NULL,
-  `day_pumper_pump_3` varchar(255) NOT NULL,
-  `day_pumper_pump_4` varchar(255) NOT NULL,
-  `night_pumper_pump_1` varchar(255) NOT NULL,
-  `night_pumper_pump_2` varchar(255) NOT NULL,
-  PRIMARY KEY (`shiftID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `historyID` int(11) NOT NULL AUTO_INCREMENT,
+  `shiftID` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `employeeID` int(11) NOT NULL,
+  `pumpNumber` int(11) NOT NULL,
+  `shiftType` enum('Diesel_Pumper','Petrol_Pumper','Other') NOT NULL,
+  `nightShift` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`historyID`),
+  KEY `shiftID` (`shiftID`),
+  KEY `employeeID` (`employeeID`),
+  CONSTRAINT `shifthistory_ibfk_1` FOREIGN KEY (`shiftID`) REFERENCES `shift` (`shiftID`) ON DELETE CASCADE,
+  CONSTRAINT `shifthistory_ibfk_2` FOREIGN KEY (`employeeID`) REFERENCES `employee` (`employeeID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table fillingstationdb.shifthistory: ~0 rows (approximately)
+-- Dumping data for table fillingstationdb.shifthistory: ~1 rows (approximately)
+INSERT IGNORE INTO `shifthistory` (`historyID`, `shiftID`, `date`, `employeeID`, `pumpNumber`, `shiftType`, `nightShift`) VALUES
+	(1, 4, '2025-03-19', 2, 3, 'Petrol_Pumper', 0);
 
 -- Dumping structure for table fillingstationdb.users
 CREATE TABLE IF NOT EXISTS `users` (
@@ -174,11 +208,12 @@ CREATE TABLE IF NOT EXISTS `users` (
   `role` enum('admin','user') NOT NULL DEFAULT 'user',
   PRIMARY KEY (`userID`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table fillingstationdb.users: ~0 rows (approximately)
+-- Dumping data for table fillingstationdb.users: ~2 rows (approximately)
 INSERT IGNORE INTO `users` (`userID`, `name`, `email`, `password`, `role`) VALUES
-	(1, 'asd', 'asd@gmail.com', '$2b$10$/wdkX09Ggt6bCQjiGfqaguk2Z5oMi0ciOf3XkiNw8qALLFAes9sMa', 'user');
+	(1, 'asd', 'asd@gmail.com', '$2b$10$/wdkX09Ggt6bCQjiGfqaguk2Z5oMi0ciOf3XkiNw8qALLFAes9sMa', 'admin'),
+	(2, 'abc', 'abc@gmail.com', '$2b$10$Il64hU9CxFiybvpT/oloseTSjm5KpxWWGAHW2uPsZvx8KkqmKrtC.', 'user');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

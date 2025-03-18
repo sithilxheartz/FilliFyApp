@@ -1,12 +1,13 @@
-import 'dart:convert';
+import 'package:fillifyapp/main.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'main.dart';
 import 'fuelStockPage.dart';
-import 'managementMenu.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'oilShopMenu.dart';
 import 'shiftsViewPage.dart';
+import 'managementMenu.dart';
+import 'fuelSalesAdd.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -16,8 +17,9 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   String? userName;
   String? userEmail;
-  String? userRole; // Store user role
-  List<double> fuelLevels = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+  String? userRole;
+  List<double> fuelLevels = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]; // Dummy data
+  final double tankCapacity = 13000;
 
   @override
   void initState() {
@@ -28,7 +30,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _fetchUserProfile() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-    String? role = prefs.getString('role'); // Retrieve role
+    String? role = prefs.getString('role');
 
     if (token == null) {
       if (!mounted) return;
@@ -37,9 +39,10 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     setState(() {
-      userRole = role; // Set the user role
+      userRole = role;
     });
 
+    // Fetch user data (name & email)
     try {
       final response = await http.get(
         Uri.parse('http://10.0.2.2:5000/profile'),
@@ -64,18 +67,19 @@ class _DashboardPageState extends State<DashboardPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('role'); // Remove role on logout
-    if (!mounted) return;
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+  void updateFuelLevels(List<double> newLevels) {
+    setState(() {
+      fuelLevels = newLevels;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Dashboard", style: TextStyle(color: Colors.white)), backgroundColor: Colors.blue.shade900),
+      appBar: AppBar(
+        title: const Text("Dashboard", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blue.shade900,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -86,7 +90,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Text('Welcome, $userName!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   Text('Email: $userEmail', style: TextStyle(fontSize: 18, color: Colors.grey)),
                   Text('Role: ${userRole ?? "Unknown"}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                 ],
               ),
             Expanded(
@@ -105,9 +109,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   List<Widget> _buildMenuItems() {
     List<Widget> menuItems = [
-      _buildMenuItem(context, Icons.local_gas_station, "Fuel Stock", FuelStockPage(fuelLevels)),
+      _buildMenuItem(context, Icons.local_gas_station, "Fuel Stock", FuelStock()),
       _buildMenuItem(context, Icons.oil_barrel, "Oil Shop", OilShopApp()),
       _buildMenuItem(context, Icons.work, "Shifts View", ShiftSchedulePage()),
+      _buildMenuItem(context, Icons.sell, "Add Fuel Sales", AddSalesPage(updateFuelLevels, fuelLevels, tankCapacity)), // NEW MENU ITEM
     ];
 
     if (userRole == "admin") {
@@ -138,11 +143,19 @@ class _DashboardPageState extends State<DashboardPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 50, color: Colors.blue.shade900),
-            SizedBox(height: 10),
-            Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('role');
+    if (!mounted) return;
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
   }
 }

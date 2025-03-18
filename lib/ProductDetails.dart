@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 
 class ProductDetails extends StatelessWidget {
-  final Map<String, String> product;
+  final Map<String, dynamic> product;
 
   ProductDetails(this.product);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Product Details")),
+      appBar: AppBar(
+        title: Text("Product Details", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blue.shade900,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Name: ${product['name']}", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            Text("Price: ${product['price']}", style: TextStyle(fontSize: 18)),
-            Text("Brand: ${product['brand']}", style: TextStyle(fontSize: 18)),
-            Text("Size: ${product['size']}", style: TextStyle(fontSize: 18)),
-            Text("Stock: ${product['stock']}", style: TextStyle(fontSize: 18)),
-            Text("Usage: ${product['specify']}", style: TextStyle(fontSize: 18)),
+            Text("Name: ${product['productName']}", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text("Price: ${product['price'] ?? 'N/A'}", style: TextStyle(fontSize: 18)),
+            Text("Stock: ${product['stockQuantity']}", style: TextStyle(fontSize: 18)),
           ],
         ),
       ),

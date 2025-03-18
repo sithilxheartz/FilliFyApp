@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'dashboard.dart';
-import 'productMenu.dart';
 import 'productUpdateStock.dart';
-import 'productAddNew.dart';
+import 'productDetails.dart';
+import 'AddNewProduct.dart';
 
 class OilShopApp extends StatefulWidget {
   @override
@@ -11,173 +13,192 @@ class OilShopApp extends StatefulWidget {
 }
 
 class _OilShopAppState extends State<OilShopApp> {
-  String? userRole; // Store user role
-  List<Map<String, String>> products = [
-    {
-      "name": "Engine Oil 5L",
-      "price": "Rs.5400.00",
-      "brand": "Caltex",
-      "size": "5L",
-      "stock": "12",
-      "specify": "Petrol Cars",
-    },
-    {
-      "name": "Supra Oil 1L",
-      "price": "Rs.2700.00",
-      "brand": "Supreme",
-      "size": "1L",
-      "stock": "20",
-      "specify": "Diesel Cars",
-    },
-  ];
+  String? userRole;
+  List<Map<String, dynamic>> products = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _getUserRole();
+    _fetchProducts();
   }
 
   Future<void> _getUserRole() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      userRole = prefs.getString('role') ?? "user"; // Default to "user"
+      userRole = prefs.getString('role') ?? "user";
     });
   }
 
-  void addProduct(Map<String, String> product) {
-    setState(() {
-      products.add(product);
-    });
-  }
+  Future<void> _fetchProducts() async {
+    try {
+      var response = await http.get(Uri.parse("http://10.0.2.2:5000/inventory"));
 
-  void updateStock(String productName, String newStock) {
-    setState(() {
-      for (var product in products) {
-        if (product["name"] == productName) {
-          product["stock"] = newStock;
-          break;
-        }
+      if (response.statusCode == 200) {
+        setState(() {
+          products = List<Map<String, dynamic>>.from(json.decode(response.body));
+          isLoading = false;
+        });
+      } else {
+        _showMessage("Failed to fetch products");
       }
-    });
+    } catch (e) {
+      _showMessage("Error fetching products: $e");
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: MainMenu(
-        products: products,
-        addProduct: addProduct,
-        updateStock: updateStock,
-        userRole: userRole, // Pass role
-      ),
-    );
+  Future<void> _updateStock(int productId, String newStock) async {
+    try {
+      var response = await http.put(
+        Uri.parse("http://10.0.2.2:5000/inventory/$productId"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"stockQuantity": int.parse(newStock)}),
+      );
+
+      if (response.statusCode == 200) {
+        _showMessage("Stock updated successfully!");
+        _fetchProducts(); // Refresh products after update
+      } else {
+        _showMessage("Failed to update stock");
+      }
+    } catch (e) {
+      _showMessage("Error updating stock: $e");
+    }
   }
-}
 
-class MainMenu extends StatefulWidget {
-  final List<Map<String, String>> products;
-  final Function(Map<String, String>) addProduct;
-  final Function(String, String) updateStock;
-  final String? userRole;
+  Future<void> _deleteProduct(int productId) async {
+    try {
+      var response = await http.delete(Uri.parse("http://10.0.2.2:5000/inventory/$productId"));
 
-  MainMenu({
-    required this.products,
-    required this.addProduct,
-    required this.updateStock,
-    required this.userRole,
-  });
+      if (response.statusCode == 200) {
+        _showMessage("Product deleted successfully!");
+        _fetchProducts(); // Refresh products after deletion
+      } else {
+        _showMessage("Failed to delete product");
+      }
+    } catch (e) {
+      _showMessage("Error deleting product: $e");
+    }
+  }
 
-  @override
-  _MainMenuState createState() => _MainMenuState();
-}
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
-class _MainMenuState extends State<MainMenu> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Oil Shop", style: TextStyle(color: Colors.white)),
+        title: const Text("Oil Shop", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => DashboardPage()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardPage()));
           },
         ),
       ),
-      backgroundColor: Color(0xFFF8F3F7),
-      body: Padding(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
         padding: const EdgeInsets.all(20.0),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 15,
-          mainAxisSpacing: 15,
-          children: _buildMenuItems(),
+        child: GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, // Two items per row
+            crossAxisSpacing: 15,
+            mainAxisSpacing: 15,
+            childAspectRatio: 0.8,
+          ),
+          itemCount: userRole == "admin" ? products.length + 1 : products.length,
+          itemBuilder: (context, index) {
+            if (userRole == "admin" && index == products.length) {
+              return _buildMenuItem(context, Icons.add, "Add Product", AddNewProduct());
+            } else {
+              return _buildProductItem(context, products[index]);
+            }
+          },
         ),
       ),
     );
   }
 
-  List<Widget> _buildMenuItems() {
-    List<Widget> menuItems = [
-      _buildMenuItem(context, Icons.store, "Product Menu", ProductMenu(products: widget.products)),
-    ];
-
-    // Show only for admins
-    if (widget.userRole == "admin") {
-      menuItems.add(_buildMenuItem(context, Icons.add_circle_outline, "Add Product", null));
-      menuItems.add(_buildMenuItem(context, Icons.update, "Update Stock", UpdateStockPage(updateStock: widget.updateStock)));
-    }
-
-    return menuItems;
-  }
-
-  Widget _buildMenuItem(BuildContext context, IconData icon, String label, Widget? page) {
+  Widget _buildProductItem(BuildContext context, Map<String, dynamic> product) {
     return GestureDetector(
-      onTap: () async {
-        if (label == "Add Product") {
-          final newProduct = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => AddNewProduct()),
-          );
-
-          if (newProduct != null) {
-            setState(() {
-              widget.addProduct(newProduct);
-            });
-          }
-        } else if (page != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => page),
-          );
-        }
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetails(product)));
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Color(0xFFD9ECFB),
+          color: Colors.blue.shade50,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade400,
-              blurRadius: 5,
-              spreadRadius: 1,
-            ),
+            BoxShadow(color: Colors.grey.shade400, blurRadius: 5, spreadRadius: 1),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 50, color: Color(0xFF0A4DA2)),
-            SizedBox(height: 10),
-            Text(
-              label,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 0, 0, 0)),
+            const Icon(Icons.oil_barrel, size: 50, color: Colors.blue),
+            const SizedBox(height: 10),
+            Flexible(
+              child: Text(
+                product['productName'],
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            const SizedBox(height: 5),
+            Text(" ${product['productName']}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            //Text("Stock: ${product['stockQuantity']}", style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+            if (userRole == "admin") ...[
+              const SizedBox(height: 5),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UpdateStockPage(updateStock: _updateStock, productId: product['productID']),
+                    ),
+                  );
+                },
+                child: const Text("Update Stock"),
+              ),
+              ElevatedButton(
+                onPressed: () => _deleteProduct(product['productID']),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text("Delete", style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(BuildContext context, IconData icon, String label, Widget page) {
+    return GestureDetector(
+      onTap: () async {
+        bool? productAdded = await Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+
+        // If a product was added, refresh the list
+        if (productAdded == true) {
+          _fetchProducts();
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.grey.shade400, blurRadius: 5, spreadRadius: 1)],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 50, color: Colors.blue.shade900),
+            const SizedBox(height: 10),
+            Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

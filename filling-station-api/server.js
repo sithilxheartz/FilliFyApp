@@ -406,6 +406,92 @@ app.get("/get-shifts-by-date", (req, res) => {
   });
 });
 
+//add fuelstock
+app.post("/add-fuel-stock", async (req, res) => {
+  const { fuelType, newLiters } = req.body; // Receive fuel type and amount
+  const currentDate = new Date().toISOString().slice(0, 19).replace("T", " "); // Format: YYYY-MM-DD HH:MM:SS
+
+  if (!fuelType || newLiters === undefined) {
+      return res.status(400).json({ message: "Fuel type and liters are required" });
+  }
+
+  try {
+      // Fetch latest fuel availability entry
+      db.query(
+          "SELECT * FROM fuelavailability ORDER BY date DESC LIMIT 1",
+          async (err, fuelAvailability) => {
+              if (err) return res.status(500).json({ message: "Error fetching fuel availability", error: err });
+
+              // Initialize new stock record
+              let newStockEntry = {
+                  date: currentDate,
+                  liters_in_tank_1: 0,
+                  liters_in_tank_2: 0,
+                  liters_in_tank_3: 0,
+                  liters_in_tank_4: 0,
+                  liters_in_tank_5: 0,
+                  liters_in_tank_6: 0,
+              };
+
+              if (fuelAvailability.length > 0) {
+                  newStockEntry = { ...fuelAvailability[0] }; // Copy previous values
+                  delete newStockEntry.stockID; // Remove stockID for insertion
+                  newStockEntry.date = currentDate;
+              }
+
+              // Fetch tank details
+              db.query(
+                  "SELECT * FROM fueltank WHERE fueltype = ?",
+                  [fuelType],
+                  async (err, tanks) => {
+                      if (err) return res.status(500).json({ message: "Error fetching tanks", error: err });
+
+                      if (tanks.length === 0) {
+                          return res.status(404).json({ message: "No tanks found for this fuel type" });
+                      }
+
+                      let remainingLiters = newLiters;
+
+                      for (let i = 0; i < tanks.length; i++) {
+                          let tank = tanks[i];
+                          let tankIndex = `liters_in_tank_${tank.tankID}`; // Column name
+                          let currentLiters = newStockEntry[tankIndex] || 0;
+                          let maxCapacity = tank.capacity;
+                          let availableSpace = maxCapacity - currentLiters;
+
+                          if (remainingLiters > 0) {
+                              let litersToAdd = Math.min(remainingLiters, availableSpace);
+                              remainingLiters -= litersToAdd;
+                              newStockEntry[tankIndex] += litersToAdd;
+                          }
+                      }
+
+                      // Insert new row into fuelavailability
+                      db.query(
+                          "INSERT INTO fuelavailability SET ?",
+                          newStockEntry,
+                          (err, result) => {
+                              if (err) return res.status(500).json({ message: "Error updating fuel availability", error: err });
+
+                              // Insert into fuelstock table
+                              db.query(
+                                  "INSERT INTO fuelstock (fuelType, quantity) VALUES (?, ?)",
+                                  [fuelType, newLiters - remainingLiters], // Only the added liters
+                                  (err, result) => {
+                                      if (err) return res.status(500).json({ message: "Error inserting into fuelstock", error: err });
+                                      return res.json({ message: "Fuel stock added successfully", date: currentDate });
+                                  }
+                              );
+                          }
+                      );
+                  }
+              );
+          }
+      );
+  } catch (error) {
+      return res.status(500).json({ message: "Server error", error });
+  }
+});
 
 
 // ==================== SERVER LISTENING ====================

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'EmployeePage.dart';
 import 'assignShifts.dart';
+import 'addfuelstock.dart';
 
 class ManagementMenu extends StatelessWidget {
   const ManagementMenu({super.key});
@@ -39,6 +40,12 @@ class ManagementMenu extends StatelessWidget {
               Icons.assignment,
               "Assign Shifts",
               AssignShiftPage(),
+            ),
+            _buildMenuItem(
+              context,
+              Icons.add,
+              "Add Fuel Stock",
+              AddFuelStockPage(),
             ),
           ],
         ),

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class AddSalesPage extends StatefulWidget {
   final Function(List<double>) updateFuelLevels;
@@ -6,11 +8,12 @@ class AddSalesPage extends StatefulWidget {
   final double tankCapacity;
 
   AddSalesPage(this.updateFuelLevels, this.fuelLevels, this.tankCapacity);
+
   @override
-  _RemoveStockPageState createState() => _RemoveStockPageState();
+  _AddSalesPageState createState() => _AddSalesPageState();
 }
 
-class _RemoveStockPageState extends State<AddSalesPage> {
+class _AddSalesPageState extends State<AddSalesPage> {
   List<TextEditingController> controllers = [];
 
   @override
@@ -18,19 +21,43 @@ class _RemoveStockPageState extends State<AddSalesPage> {
     super.initState();
     controllers = List.generate(
       widget.fuelLevels.length,
-      (index) => TextEditingController(text: "0"),
+          (index) => TextEditingController(text: "0"),
     );
   }
 
-  void updateStock() {
+  void updateStock() async {
     List<double> newLevels = List.generate(widget.fuelLevels.length, (index) {
-      double removedFuel = double.tryParse(controllers[index].text) ?? 0;
+      double removedFuel = double.tryParse(controllers[index].text) ?? 0.0;
       return ((widget.fuelLevels[index] * widget.tankCapacity - removedFuel) /
-              widget.tankCapacity)
+          widget.tankCapacity)
           .clamp(0.0, 1.0);
     });
-    widget.updateFuelLevels(newLevels);
-    Navigator.pop(context);
+
+    List<double> salesData = List.generate(widget.fuelLevels.length, (index) {
+      return double.tryParse(controllers[index].text) ?? 0.0;
+    });
+
+    // Send the sales data to the backend for updating the database
+    try {
+      var response = await http.post(
+        Uri.parse("http://10.0.2.2:5000/update-fuel-stock"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"sales": salesData}),
+      );
+
+      if (response.statusCode == 200) {
+        // If the server responds successfully, update the local fuel levels
+        widget.updateFuelLevels(newLevels);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fuel stock updated!")));
+      } else {
+        // If the server responds with something other than 200
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to update stock. Server error.")));
+      }
+    } catch (e) {
+      // Handle any error, such as network issues or exceptions
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
   }
 
   @override
@@ -97,7 +124,7 @@ class _RemoveStockPageState extends State<AddSalesPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: updateStock,
+                onPressed: updateStock, // Trigger updateStock when the button is pressed
                 child: Text("Add Sales"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade900,

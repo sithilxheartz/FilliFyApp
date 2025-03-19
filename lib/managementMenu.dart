@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'EmployeePage.dart';
 import 'assignShifts.dart';
 import 'addfuelstock.dart';
+import 'fuelStockCalibrate.dart';
 
 class ManagementMenu extends StatelessWidget {
   const ManagementMenu({super.key});
@@ -52,7 +53,7 @@ class ManagementMenu extends StatelessWidget {
               context,
               Icons.compass_calibration,
               "Calibrate Fuel Stock",
-              AddFuelStockPage(),
+              fuelStockCalibratePage(),
             ),
           ],
         ),

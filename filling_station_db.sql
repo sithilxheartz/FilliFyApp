@@ -46,9 +46,11 @@ CREATE TABLE IF NOT EXISTS `fuelavailability` (
   `liters_in_tank_5` float NOT NULL,
   `liters_in_tank_6` float NOT NULL,
   PRIMARY KEY (`stockID`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table fillingstationdb.fuelavailability: ~0 rows (approximately)
+-- Dumping data for table fillingstationdb.fuelavailability: ~1 rows (approximately)
+INSERT IGNORE INTO `fuelavailability` (`stockID`, `date`, `liters_in_tank_1`, `liters_in_tank_2`, `liters_in_tank_3`, `liters_in_tank_4`, `liters_in_tank_5`, `liters_in_tank_6`) VALUES
+	(2, '2025-03-18 20:01:20', 0, 0, 0, 5000, 0, 0);
 
 -- Dumping structure for table fillingstationdb.fuelstock
 CREATE TABLE IF NOT EXISTS `fuelstock` (
@@ -56,9 +58,11 @@ CREATE TABLE IF NOT EXISTS `fuelstock` (
   `fuelType` varchar(50) NOT NULL,
   `quantity` int(11) NOT NULL,
   PRIMARY KEY (`stockID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table fillingstationdb.fuelstock: ~0 rows (approximately)
+-- Dumping data for table fillingstationdb.fuelstock: ~1 rows (approximately)
+INSERT IGNORE INTO `fuelstock` (`stockID`, `fuelType`, `quantity`) VALUES
+	(2, 'Octane 92 Petrol', 5000);
 
 -- Dumping structure for table fillingstationdb.fueltank
 CREATE TABLE IF NOT EXISTS `fueltank` (
@@ -195,7 +199,7 @@ CREATE TABLE IF NOT EXISTS `shifthistory` (
   CONSTRAINT `shifthistory_ibfk_2` FOREIGN KEY (`employeeID`) REFERENCES `employee` (`employeeID`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table fillingstationdb.shifthistory: ~1 rows (approximately)
+-- Dumping data for table fillingstationdb.shifthistory: ~0 rows (approximately)
 INSERT IGNORE INTO `shifthistory` (`historyID`, `shiftID`, `date`, `employeeID`, `pumpNumber`, `shiftType`, `nightShift`) VALUES
 	(1, 4, '2025-03-19', 2, 3, 'Petrol_Pumper', 0);
 

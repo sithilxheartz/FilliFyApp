@@ -59,8 +59,8 @@ class ManagementMenu extends StatelessWidget {
             ),
             _buildMenuItem(
               context,
-              Icons.manage_accounts,
-              "Update Users",
+              Icons.admin_panel_settings,
+              "Manage Users",
               UserRoleManagement(),
             ),
             _buildMenuItem(

@@ -4,6 +4,8 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const { Parser } = require("json2csv");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -513,6 +515,48 @@ app.put("/users/:id/role", (req, res) => {
   db.query("UPDATE users SET role = ? WHERE userID = ?", [role, id], (err, result) => {
     if (err) return res.status(500).json({ message: "Error updating role", error: err });
     res.json({ message: "User role updated successfully" });
+  });
+});
+
+// Generate Sales Report (CSV)
+app.get("/reports/sales", (req, res) => {
+  db.query("SELECT * FROM orders", (err, results) => {
+    if (err) return res.status(500).json({ message: "Error fetching sales data" });
+
+    const fields = ["orderID", "userID", "totalAmount", "paymentID"];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(results);
+
+    fs.writeFileSync("sales_report.csv", csv);
+    res.download("sales_report.csv");
+  });
+});
+
+// Generate Fuel Stock Report (CSV)
+app.get("/reports/fuelstock", (req, res) => {
+  db.query("SELECT * FROM fuelavailability", (err, results) => {
+    if (err) return res.status(500).json({ message: "Error fetching fuel stock data" });
+
+    const fields = ["stockID", "date", "liters_in_tank_1", "liters_in_tank_2", "liters_in_tank_3"];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(results);
+
+    fs.writeFileSync("fuel_stock_report.csv", csv);
+    res.download("fuel_stock_report.csv");
+  });
+});
+
+// Generate Employee Work Hours Report (CSV)
+app.get("/reports/employees", (req, res) => {
+  db.query("SELECT * FROM shifthistory", (err, results) => {
+    if (err) return res.status(500).json({ message: "Error fetching employee work data" });
+
+    const fields = ["shiftID", "date", "day_pumper_pump_1", "day_pumper_pump_2"];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(results);
+
+    fs.writeFileSync("employee_report.csv", csv);
+    res.download("employee_report.csv");
   });
 });
 

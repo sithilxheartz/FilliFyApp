@@ -1,252 +1,161 @@
+import 'package:fillifyapp/main.dart';
 import 'package:flutter/material.dart';
-import 'main.dart';
+import 'fuelStockPage.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'oilShopMenu.dart';
 import 'shiftsViewPage.dart';
 import 'managementMenu.dart';
+import 'fuelSalesAdd.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
+  @override
+  _DashboardPageState createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  String? userName;
+  String? userEmail;
+  String? userRole;
+  List<double> fuelLevels = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]; // Dummy data
+  final double tankCapacity = 13000;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchUserProfile() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token');
+    String? role = prefs.getString('role');
+
+    if (token == null) {
+      if (!mounted) return;
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+      return;
+    }
+
+    setState(() {
+      userRole = role;
+    });
+
+    // Fetch user data (name & email)
+    try {
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:5000/profile'),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          userName = data['user']['name'];
+          userEmail = data['user']['email'];
+        });
+      } else {
+        _showMessage("Failed to fetch profile");
+      }
+    } catch (e) {
+      _showMessage("Error fetching profile: $e");
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void updateFuelLevels(List<double> newLevels) {
+    setState(() {
+      fuelLevels = newLevels;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Dashboard"),
-        centerTitle: true,
+        title: const Text("Dashboard", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 20,
-          mainAxisSpacing: 20,
+        child: Column(
           children: [
-            _buildMenuItem(
-              context,
-              Icons.oil_barrel_rounded,
-              "Oil Shop",
-              SalesPage(),
+            if (userName != null && userEmail != null)
+              Column(
+                children: [
+                  Text('Welcome, $userName!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  Text('Email: $userEmail', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                  Text('Role: ${userRole ?? "Unknown"}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 20,
+                mainAxisSpacing: 20,
+                children: _buildMenuItems(),
+              ),
             ),
-            _buildMenuItem(
-              context,
-              Icons.local_gas_station,
-              "Fuel Stock",
-              FuelStockPage(),
-            ),
-            _buildMenuItem(
-              context,
-              Icons.timelapse,
-              "Shifts",
-              ShiftSchedulePage(),
-            ),
-            _buildMenuItem(
-              context,
-              Icons.settings,
-              "Management",
-              ManagementMenu(),
-            ),
-            _buildMenuItem(context, Icons.bar_chart, "Reports", ReportsPage()),
-            _buildMenuItem(context, Icons.shopping_cart, "Sales", SalesPage()),
-
-            _buildMenuItem(context, Icons.people, "Employees", EmployeePage()),
-
-            _buildMenuItem(context, Icons.logout, "Logout", LoginPage()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context,
-    IconData icon,
-    String label,
-    Widget page,
-  ) {
+  List<Widget> _buildMenuItems() {
+    List<Widget> menuItems = [
+      _buildMenuItem(context, Icons.local_gas_station, "Fuel Stock", FuelStock()),
+      _buildMenuItem(context, Icons.oil_barrel, "Oil Shop", OilShopApp()),
+      _buildMenuItem(context, Icons.work, "Shifts View", ShiftSchedulePage()),
+      _buildMenuItem(context, Icons.sell, "Add Fuel Sales", AddSalesPage(updateFuelLevels, fuelLevels, tankCapacity)), // NEW MENU ITEM
+    ];
+
+    if (userRole == "admin") {
+      // Only admins can see these options
+      menuItems.add(_buildMenuItem(context, Icons.settings, "Management", ManagementMenu()));
+    }
+
+    menuItems.add(_buildMenuItem(context, Icons.logout, "Logout", null, isLogout: true));
+
+    return menuItems;
+  }
+
+  Widget _buildMenuItem(BuildContext context, IconData icon, String label, Widget? page, {bool isLogout = false}) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+        if (isLogout) {
+          _logout();
+        } else if (page != null) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+        }
       },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.blue.shade50,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade400,
-              blurRadius: 5,
-              spreadRadius: 1,
-            ),
-          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 50, color: Colors.blue.shade900),
-            SizedBox(height: 10),
-            Text(
-              label,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            const SizedBox(height: 10),
+            Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
     );
   }
-}
 
-// --------------------- FUEL STOCK PAGE ---------------------
-class FuelStockPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _buildPage(context, "Fuel Stock");
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('role');
+    if (!mounted) return;
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
   }
-}
-
-// --------------------- SALES PAGE ---------------------
-class SalesPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _buildPage(context, "Sales");
-  }
-}
-
-// --------------------- REPORTS PAGE ---------------------
-class ReportsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _buildPage(context, "Reports");
-  }
-}
-
-// --------------------- EMPLOYEE MANAGEMENT PAGE ---------------------
-class EmployeePage extends StatefulWidget {
-  @override
-  _EmployeePageState createState() => _EmployeePageState();
-}
-
-class _EmployeePageState extends State<EmployeePage> {
-  final _formKey = GlobalKey<FormState>();
-
-  String name = "";
-  String position = "";
-  String contact = "";
-  String salary = "";
-
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-
-      print("New Employee Added:");
-      print("Name: $name");
-      print("Position: $position");
-      print("Contact: $contact");
-      print("Salary: $salary");
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Employee Added Successfully!")));
-
-      // You can replace this with code to save data in a database.
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Add New Employee"),
-        backgroundColor: Colors.blue.shade900,
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              _buildTextField(
-                "Employee Name",
-                Icons.person,
-                (value) => name = value!,
-              ),
-              SizedBox(height: 15),
-              _buildTextField(
-                "Position",
-                Icons.work,
-                (value) => position = value!,
-              ),
-              SizedBox(height: 15),
-              _buildTextField(
-                "Contact Number",
-                Icons.phone,
-                (value) => contact = value!,
-              ),
-              SizedBox(height: 15),
-              _buildTextField(
-                "Salary",
-                Icons.monetization_on,
-                (value) => salary = value!,
-                isNumber: true,
-              ),
-              SizedBox(height: 25),
-              ElevatedButton(
-                onPressed: _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade900,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                ),
-                child: Text(
-                  "Submit",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    String hint,
-    IconData icon,
-    Function(String?) onSaved, {
-    bool isNumber = false,
-  }) {
-    return TextFormField(
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.blue.shade900),
-        hintText: hint,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: Colors.blue.shade50,
-      ),
-      validator: (value) => value!.isEmpty ? "This field is required" : null,
-      onSaved: onSaved,
-    );
-  }
-}
-
-// --------------------- SETTINGS PAGE ---------------------
-class SettingsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _buildPage(context, "Settings");
-  }
-}
-
-// --------------------- GENERIC PAGE TEMPLATE ---------------------
-Widget _buildPage(BuildContext context, String title) {
-  return Scaffold(
-    appBar: AppBar(title: Text(title), backgroundColor: Colors.blue.shade900),
-    body: Center(
-      child: Text(
-        "Welcome to $title Page",
-        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-      ),
-    ),
-  );
 }

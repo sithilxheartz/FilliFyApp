@@ -1,7 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'shiftsUpdatePage.dart';
-import 'shiftHistoryPage.dart';
-import 'shiftRequestPage.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart'; // For date formatting
 
 class ShiftSchedulePage extends StatefulWidget {
   @override
@@ -9,20 +9,50 @@ class ShiftSchedulePage extends StatefulWidget {
 }
 
 class _ShiftSchedulePageState extends State<ShiftSchedulePage> {
-  DateTime selectedDate = DateTime(2025, 1, 23);
+  List<Map<String, dynamic>> shifts = [];
+  DateTime selectedDate = DateTime.now();
 
-  Map<String, List<String>> shiftData = {
-    "Day Shift": [
-      "Pump 01 : Suneth Kumara",
-      "Pump 02 : Ananda Kumara",
-      "Pump 03 : Lalith Kumara",
-      "Pump 04 : Sadun Kumara",
-    ],
-    "Night Shift": [
-      "Pump 01 & 02 : Nimesh Kumara",
-      "Pump 03 & 04 : Kasun Kumara",
-    ],
-  };
+  @override
+  void initState() {
+    super.initState();
+    _fetchShiftsByDate(selectedDate);
+  }
+
+  Future<void> _fetchShiftsByDate(DateTime date) async {
+    String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+
+    final response = await http.get(
+      Uri.parse("http://10.0.2.2:5000/get-shifts-by-date?date=$formattedDate"),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        shifts = List<Map<String, dynamic>>.from(json.decode(response.body));
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to load shifts")));
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+
+    if (pickedDate != null && pickedDate != selectedDate) {
+      setState(() {
+        selectedDate = pickedDate;
+      });
+      _fetchShiftsByDate(selectedDate);
+    }
+  }
+
+  String getShiftTime(bool isNightShift) {
+    return isNightShift ? "8:00 PM - 8:00 AM" : "8:00 AM - 8:00 PM";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,148 +60,68 @@ class _ShiftSchedulePageState extends State<ShiftSchedulePage> {
       appBar: AppBar(
         title: Text("Shift Schedule", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blue.shade900,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.calendar_today, color: Colors.white),
+            onPressed: () => _selectDate(context),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_left),
-                    onPressed: () {
-                      setState(() {
-                        selectedDate = selectedDate.subtract(Duration(days: 1));
-                      });
-                    },
-                  ),
-                  Text(
-                    "${selectedDate.year} - ${selectedDate.month.toString().padLeft(2, '0')} - ${selectedDate.day.toString().padLeft(2, '0')}",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.arrow_right),
-                    onPressed: () {
-                      setState(() {
-                        selectedDate = selectedDate.add(Duration(days: 1));
-                      });
-                    },
-                  ),
-                ],
-              ),
+            Text(
+              "Shifts for ${DateFormat('yyyy-MM-dd').format(selectedDate)}",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
-            _buildShiftSection(
-              "Day Shift",
-              "(8:00 AM - 8:00 PM)",
-              shiftData["Day Shift"]!,
-            ),
-            SizedBox(height: 20),
-            _buildShiftSection(
-              "Night Shift",
-              "(8:00 PM - 8:00 AM)",
-              shiftData["Night Shift"]!,
-            ),
-            SizedBox(height: 18),
-            _buildButton("Update New Shifts", context, () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => UpdateShiftPage(
-                        selectedDate: selectedDate,
-                        shiftData: shiftData,
+            shifts.isEmpty
+                ? Expanded(child: Center(child: Text("No shifts assigned for this date")))
+                : Expanded(
+              child: ListView.builder(
+                itemCount: shifts.length,
+                itemBuilder: (context, index) {
+                  final shift = shifts[index];
+
+                  return Card(
+                    margin: EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: Colors.blue.shade900, width: 1),
+                    ),
+                    elevation: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "👷 Employee: ${shift['employeeName'] ?? 'Not Assigned'}",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            "⛽ Pump: ${shift['shiftType']}",
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            "⏰ Time: ${getShiftTime(shift['nightShift'] == 1)}",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
                       ),
-                ),
-              );
-
-              if (result != null) {
-                setState(() {
-                  selectedDate = result["date"];
-                  shiftData = result["shifts"];
-                });
-              }
-            }),
-            SizedBox(height: 10),
-            _buildButton("Request a Shift Change", context, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RequestShiftChangePage(),
-                ),
-              );
-            }),
-            SizedBox(height: 10),
-            _buildButton("View Shift History", context, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ShiftHistoryPage()),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildShiftSection(String title, String time, List<String> shifts) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(10),
-          color: Colors.blue.shade900,
-          child: Text(
-            "$title   $time",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
-        ...shifts.map(
-          (shift) => Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
-            child: Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.blue.shade900),
-                borderRadius: BorderRadius.circular(5),
+                    ),
+                  );
+                },
               ),
-              child: Text(shift),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildButton(
-    String text,
-    BuildContext context,
-    VoidCallback onPressed,
-  ) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue.shade900,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          elevation: 4,
-        ),
-        child: Text(
-          text,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ],
         ),
       ),
     );

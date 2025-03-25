@@ -1,12 +1,27 @@
+import 'package:fillifyapp/fuelStockCalibrate.dart';
 import 'package:flutter/material.dart';
+import 'EmployeePage.dart';
+import 'assignShifts.dart';
+import 'addfuelstock.dart';
+import 'fuelStockCalibrate.dart';
 
 class ManagementMenu extends StatelessWidget {
+  const ManagementMenu({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Management Dashboard"),
-        centerTitle: true,
+        title: Text(
+          "Management Dashboard",
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context); // Correct back navigation
+          },
+        ),
         backgroundColor: Colors.blue.shade900,
       ),
       body: Padding(
@@ -16,31 +31,29 @@ class ManagementMenu extends StatelessWidget {
           crossAxisSpacing: 20,
           mainAxisSpacing: 20,
           children: [
-            _buildMenuItem(context, Icons.list, "Products", ManagementPage()),
             _buildMenuItem(
               context,
-              Icons.local_gas_station,
-              "Stocks",
-              ManagementPage(),
+              Icons.people,
+              "Add Pumpers",
+              EmployeePage(),
             ),
             _buildMenuItem(
               context,
-              Icons.timelapse,
-              "Shifts",
-              ManagementPage(),
-            ),
-            _buildMenuItem(context, Icons.people, "Pumpers", ManagementPage()),
-            _buildMenuItem(
-              context,
-              Icons.bar_chart,
-              "Requests",
-              ManagementPage(),
+              Icons.assignment,
+              "Assign Shifts",
+              AssignShiftPage(),
             ),
             _buildMenuItem(
               context,
-              Icons.shopping_cart,
-              "Orders",
-              ManagementPage(),
+              Icons.add,
+              "Add Fuel Stock",
+              AddFuelStockPage(),
+            ),
+            _buildMenuItem(
+              context,
+              Icons.compass_calibration,
+              "Calibrate Fuel Stock",
+              fuelStockCalibratePage(),
             ),
           ],
         ),
@@ -49,11 +62,11 @@ class ManagementMenu extends StatelessWidget {
   }
 
   Widget _buildMenuItem(
-    BuildContext context,
-    IconData icon,
-    String label,
-    Widget page,
-  ) {
+      BuildContext context,
+      IconData icon,
+      String label,
+      Widget page,
+      ) {
     return GestureDetector(
       onTap: () {
         Navigator.push(context, MaterialPageRoute(builder: (context) => page));
@@ -84,29 +97,4 @@ class ManagementMenu extends StatelessWidget {
       ),
     );
   }
-}
-
-class ManagementPage extends StatelessWidget {
-  const ManagementPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return _buildPage(context, "Management");
-  }
-}
-
-Widget _buildPage(BuildContext context, String title) {
-  return Scaffold(
-    appBar: AppBar(title: Text(title), backgroundColor: Colors.black),
-    body: Center(
-      child: Text(
-        "Welcome to $title",
-        style: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
-        ),
-      ),
-    ),
-  );
 }

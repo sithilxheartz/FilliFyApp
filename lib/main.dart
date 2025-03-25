@@ -1,11 +1,17 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard.dart';
+import 'userRegistration.dart'; // Import RegistrationPage
 
 void main() {
-  runApp(FillingStationApp());
+  runApp(const FillingStationApp());
 }
 
 class FillingStationApp extends StatelessWidget {
+  const FillingStationApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(debugShowCheckedModeBanner: false, home: LoginPage());
@@ -14,12 +20,63 @@ class FillingStationApp extends StatelessWidget {
 
 // --------------------- LOGIN PAGE ---------------------
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
   _LoginPageState createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscureText = true;
+  bool _isLoading = false;
+
+  Future<void> loginUser() async {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showMessage("Please enter email and password");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    var url = Uri.parse("http://10.0.2.2:5000/login");
+    var response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email, "password": password}),
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    var data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', data["token"]);
+      await prefs.setString('role', data["role"]); // Store user role
+
+      _showMessage("Login successful");
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => DashboardPage()),
+      );
+    } else {
+      _showMessage(data["message"] ?? "Login failed");
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,66 +94,51 @@ class _LoginPageState extends State<LoginPage> {
         child: Center(
           child: SingleChildScrollView(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 30.0),
+              padding: const EdgeInsets.symmetric(horizontal: 30.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.local_gas_station, size: 80, color: Colors.white),
-                  SizedBox(height: 20),
-                  Text(
+                  const Icon(Icons.local_gas_station, size: 80, color: Colors.white),
+                  const SizedBox(height: 20),
+                  const Text(
                     "Filling Station Management",
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                  SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-                  _buildTextField(
-                    hintText: "Email",
-                    icon: Icons.email,
-                    isPassword: false,
-                  ),
-                  SizedBox(height: 15),
-                  _buildTextField(
-                    hintText: "Password",
-                    icon: Icons.lock,
-                    isPassword: true,
-                  ),
-                  SizedBox(height: 25),
+                  // Email and Password fields
+                  _buildTextField(_emailController, "Email", Icons.email, false),
+                  const SizedBox(height: 15),
+                  _buildTextField(_passwordController, "Password", Icons.lock, true),
+                  const SizedBox(height: 25),
 
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DashboardPage(),
-                        ),
-                      );
-                    },
+                  _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : ElevatedButton(
+                    onPressed: loginUser,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.blue.shade900,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 100,
-                        vertical: 15,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                       elevation: 5,
                     ),
-                    child: Text(
-                      "Login",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: const Text("Login", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                   SizedBox(height: 20),
+
+                  // Link to Registration page
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => RegistrationPage()),
+                      );
+                    },
+                    child: Text("Don't have an account? Register", style: TextStyle(fontSize: 16, color: Colors.white)),
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -106,38 +148,24 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildTextField({
-    required String hintText,
-    required IconData icon,
-    required bool isPassword,
-  }) {
+  Widget _buildTextField(TextEditingController controller, String hintText, IconData icon, bool isPassword) {
     return TextField(
+      controller: controller,
       obscureText: isPassword ? _obscureText : false,
-      style: TextStyle(color: Colors.white),
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.white),
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.white70),
+        hintStyle: const TextStyle(color: Colors.white70),
         filled: true,
         fillColor: Colors.white.withOpacity(0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
-        ),
-        suffixIcon:
-            isPassword
-                ? IconButton(
-                  icon: Icon(
-                    _obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                )
-                : null,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+        suffixIcon: isPassword
+            ? IconButton(
+          icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.white),
+          onPressed: () => setState(() => _obscureText = !_obscureText),
+        )
+            : null,
       ),
     );
   }

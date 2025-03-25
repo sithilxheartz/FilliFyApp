@@ -493,6 +493,30 @@ app.post("/add-fuel-stock", async (req, res) => {
   }
 });
 
+// Get All Users
+app.get("/users", (req, res) => {
+  db.query("SELECT userID, name, email, role FROM users", (err, result) => {
+    if (err) return res.status(500).json({ message: "Error fetching users", error: err });
+    res.json(result);
+  });
+});
+
+// Update User Role
+app.put("/users/:id/role", (req, res) => {
+  const { role } = req.body;
+  const { id } = req.params;
+
+  if (!role || (role !== "admin" && role !== "user")) {
+    return res.status(400).json({ message: "Invalid role" });
+  }
+
+  db.query("UPDATE users SET role = ? WHERE userID = ?", [role, id], (err, result) => {
+    if (err) return res.status(500).json({ message: "Error updating role", error: err });
+    res.json({ message: "User role updated successfully" });
+  });
+});
+
+
 
 // ==================== SERVER LISTENING ====================
 app.listen(PORT, () => {

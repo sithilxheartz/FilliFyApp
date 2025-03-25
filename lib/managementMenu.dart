@@ -1,3 +1,4 @@
+import 'package:fillifyapp/UserRoleManagement.dart';
 import 'package:fillifyapp/fuelStockCalibrate.dart';
 import 'package:flutter/material.dart';
 import 'EmployeePage.dart';
@@ -54,6 +55,12 @@ class ManagementMenu extends StatelessWidget {
               Icons.compass_calibration,
               "Calibrate Fuel Stock",
               fuelStockCalibratePage(),
+            ),
+            _buildMenuItem(
+              context,
+              Icons.manage_accounts,
+              "Update Users",
+              UserRoleManagement(),
             ),
           ],
         ),

@@ -102,7 +102,7 @@ class _ShiftSchedulePageState extends State<ShiftSchedulePage> {
                           ),
                           SizedBox(height: 5),
                           Text(
-                            "⛽ Pump: ${shift['shiftType']}",
+                            "⛽ Pump: Pump ${shift['pumpNumber']}",
                             style: TextStyle(fontSize: 16),
                           ),
                           SizedBox(height: 5),

@@ -537,8 +537,8 @@ app.get("/reports/fuelstock", (req, res) => {
   db.query("SELECT * FROM fuelavailability", (err, results) => {
     if (err) return res.status(500).json({ message: "Error fetching fuel stock data" });
 
-    const fields = ["stockID", "date", "liters_in_tank_1", "liters_in_tank_2", "liters_in_tank_3"];
-    const json2csvParser = new Parser({ fields });
+    const fields = ["stockID", "date", "liters_in_tank_1", "liters_in_tank_2", "liters_in_tank_3", "liters_in_tank_4", "liters_in_tank_5", "liters_in_tank_6"];
+    const json2csvParser = new Parser({ fields })
     const csv = json2csvParser.parse(results);
 
     fs.writeFileSync("fuel_stock_report.csv", csv);

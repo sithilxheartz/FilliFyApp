@@ -6,7 +6,11 @@ class UpdateShiftPage extends StatefulWidget {
   final DateTime selectedDate;
   final Map<String, List<String>> shiftData;
 
-  const UpdateShiftPage({super.key, required this.selectedDate, required this.shiftData});
+  const UpdateShiftPage({
+    super.key,
+    required this.selectedDate,
+    required this.shiftData,
+  });
 
   @override
   _UpdateShiftPageState createState() => _UpdateShiftPageState();
@@ -19,14 +23,17 @@ class _UpdateShiftPageState extends State<UpdateShiftPage> {
   final TextEditingController dayShiftPump2Controller = TextEditingController();
   final TextEditingController dayShiftPump3Controller = TextEditingController();
   final TextEditingController dayShiftPump4Controller = TextEditingController();
-  final TextEditingController nightShiftPump1Controller = TextEditingController();
-  final TextEditingController nightShiftPump3Controller = TextEditingController();
+  final TextEditingController nightShiftPump1Controller =
+      TextEditingController();
+  final TextEditingController nightShiftPump3Controller =
+      TextEditingController();
 
   @override
   void initState() {
     super.initState();
     newDate = widget.selectedDate;
-    dateController.text = "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
+    dateController.text =
+        "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
   }
 
   Future<void> _updateShiftInDatabase() async {
@@ -36,12 +43,12 @@ class _UpdateShiftPageState extends State<UpdateShiftPage> {
         dayShiftPump1Controller.text,
         dayShiftPump2Controller.text,
         dayShiftPump3Controller.text,
-        dayShiftPump4Controller.text
+        dayShiftPump4Controller.text,
       ],
       "nightShift": [
         nightShiftPump1Controller.text,
-        nightShiftPump3Controller.text
-      ]
+        nightShiftPump3Controller.text,
+      ],
     };
 
     try {
@@ -62,9 +69,9 @@ class _UpdateShiftPageState extends State<UpdateShiftPage> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 

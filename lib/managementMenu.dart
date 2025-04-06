@@ -5,6 +5,7 @@ import 'EmployeePage.dart';
 import 'assignShifts.dart';
 import 'addfuelstock.dart';
 import 'shiftRequestPage.dart';
+import 'shiftRequestView.dart';
 
 class ManagementMenu extends StatelessWidget {
   const ManagementMenu({super.key});
@@ -65,8 +66,8 @@ class ManagementMenu extends StatelessWidget {
             _buildMenuItem(
               context,
               Icons.manage_accounts,
-              "req shift",
-              RequestShiftChangePage(),
+              "Update shift",
+              ShiftRequestViewPage(),
             ),
           ],
         ),

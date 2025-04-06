@@ -4,6 +4,8 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const { Parser } = require("json2csv");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -116,6 +118,7 @@ app.get("/inventory", (req, res) => {
     res.json(result);
   });
 });
+
 //get fuel stock data
 app.get("/fuel-stock", (req, res) => {
   const { date } = req.query;  // Get date from query parameter (optional)
@@ -493,6 +496,183 @@ app.post("/add-fuel-stock", async (req, res) => {
   }
 });
 
+// Get All Users
+app.get("/users", (req, res) => {
+  db.query("SELECT userID, name, email, role FROM users", (err, result) => {
+    if (err) return res.status(500).json({ message: "Error fetching users", error: err });
+    res.json(result);
+  });
+});
+
+// Update User Role
+app.put("/users/:id/role", (req, res) => {
+  const { role } = req.body;
+  const { id } = req.params;
+
+  if (!role || (role !== "admin" && role !== "user")) {
+    return res.status(400).json({ message: "Invalid role" });
+  }
+
+  db.query("UPDATE users SET role = ? WHERE userID = ?", [role, id], (err, result) => {
+    if (err) return res.status(500).json({ message: "Error updating role", error: err });
+    res.json({ message: "User role updated successfully" });
+  });
+});
+
+// Generate Sales Report (CSV)
+app.get("/reports/sales", (req, res) => {
+  db.query("SELECT * FROM orders", (err, results) => {
+    if (err) return res.status(500).json({ message: "Error fetching sales data" });
+
+    const fields = ["orderID", "userID", "totalAmount", "paymentID"];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(results);
+
+    fs.writeFileSync("sales_report.csv", csv);
+    res.download("sales_report.csv");
+  });
+});
+
+// Generate Fuel Stock Report (CSV)
+app.get("/reports/fuelstock", (req, res) => {
+  db.query("SELECT * FROM fuelavailability", (err, results) => {
+    if (err) return res.status(500).json({ message: "Error fetching fuel stock data" });
+
+    const fields = ["stockID", "date", "liters_in_tank_1", "liters_in_tank_2", "liters_in_tank_3", "liters_in_tank_4", "liters_in_tank_5", "liters_in_tank_6"];
+    const json2csvParser = new Parser({ fields })
+    const csv = json2csvParser.parse(results);
+
+    fs.writeFileSync("fuel_stock_report.csv", csv);
+    res.download("fuel_stock_report.csv");
+  });
+});
+
+// Generate Employee Work Hours Report (CSV)
+app.get("/reports/employees", (req, res) => {
+  db.query("SELECT * FROM shifthistory", (err, results) => {
+    if (err) return res.status(500).json({ message: "Error fetching employee work data" });
+
+    const fields = ["shiftID", "date", "day_pumper_pump_1", "day_pumper_pump_2"];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(results);
+
+    fs.writeFileSync("employee_report.csv", csv);
+    res.download("employee_report.csv");
+  });
+});
+
+//shift requests
+
+app.post("/shift-requests", async (req, res) => {
+  const { pumper_name, shift_type, description, date } = req.body;
+
+  // Basic validation
+  if (!pumper_name || !shift_type || !description || !date) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  try {
+    const sql = `
+      INSERT INTO shift_requests (pumper_name, shift_type, description, date)
+      VALUES (?, ?, ?, ?)
+    `;
+    const [result] = await db.execute(sql, [pumper_name, shift_type, description, date]);
+    res.status(200).json({ message: 'Shift request submitted successfully', id: result.insertId });
+  } catch (err) {
+    console.error('Error inserting shift request:', err);
+    res.status(500).json({ error: 'Database error while inserting request' });
+  }
+});
+
+// Fetch All Shift Requests
+app.get("/shift-requests", (req, res) => {
+  db.query("SELECT * FROM shift_requests", (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: "Error fetching shift requests", error: err });
+    }
+    res.json(results);
+  });
+});
+
+// Approve Shift Request
+app.put("/shift-requests/:id/approve", async (req, res) => {
+  const { id } = req.params;
+
+  // Step 1: Fetch the shift request details
+  db.query("SELECT * FROM shift_requests WHERE id = ?", [id], async (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(404).json({ message: "Shift request not found" });
+    }
+
+    const request = results[0];
+
+    // Step 2: Update the status of the shift request to "approved"
+    db.query("UPDATE shift_requests WHERE id = ?", [id], async (err) => {
+      if (err) {
+        return res.status(500).json({ message: "Error approving shift request", error: err });
+      }
+
+      // Step 3: Extract details for assigning the shift
+      const { pumper_name, shift_type, date } = request;
+
+      // Map shift type to database-compatible values
+      const shiftType = shift_type.includes("Diesel") ? "Diesel_Pumper" : "Petrol_Pumper";
+      const nightShift = shift_type.includes("Night") ? 1 : 0;
+
+      // Fetch employeeID based on pumper_name
+      db.query("SELECT employeeID FROM employee WHERE name = ?", [pumper_name], (err, employeeResults) => {
+        if (err || employeeResults.length === 0) {
+          return res.status(404).json({ message: "Employee not found" });
+        }
+
+        const employeeID = employeeResults[0].employeeID;
+
+        // Assign a pump number (you can customize this logic)
+        const pumpNumber = 1; // Example: Assign pump 1 by default
+
+        // Step 4: Call the /assign-shift logic
+        const query1 = `
+          INSERT INTO shift (date, shiftType, nightShift, employeeID, pumpNumber)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+
+        db.query(query1, [date, shiftType, nightShift, employeeID, pumpNumber], (err, result) => {
+          if (err) {
+            return res.status(500).json({ message: "Error assigning shift", error: err });
+          }
+
+          const shiftID = result.insertId;
+
+          const query2 = `
+            INSERT INTO shifthistory (shiftID, date, employeeID, pumpNumber, shiftType, nightShift)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `;
+
+          db.query(query2, [shiftID, date, employeeID, pumpNumber, shiftType, nightShift], (err) => {
+            if (err) {
+              return res.status(500).json({ message: "Error updating shift history", error: err });
+            }
+            res.status(200).json({ message: "Shift request approved and assigned successfully" });
+          });
+        });
+      });
+    });
+  });
+});
+
+// Decline Shift Request
+app.delete("/shift-requests/:id", (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM shift_requests WHERE id = ?", [id], (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: "Error declining shift request", error: err });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Shift request not found" });
+    }
+    res.json({ message: "Shift request declined and removed successfully" });
+  });
+});
 
 // ==================== SERVER LISTENING ====================
 app.listen(PORT, () => {

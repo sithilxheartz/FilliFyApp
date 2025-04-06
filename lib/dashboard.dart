@@ -7,7 +7,9 @@ import 'oilShopMenu.dart';
 import 'shiftsViewPage.dart';
 import 'managementMenu.dart';
 import 'fuelSalesAdd.dart';
+import 'reportsPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'shiftRequestPage.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -112,12 +114,15 @@ class _DashboardPageState extends State<DashboardPage> {
       _buildMenuItem(context, Icons.local_gas_station, "Fuel Stock", FuelStock()),
       _buildMenuItem(context, Icons.oil_barrel, "Oil Shop", OilShopApp()),
       _buildMenuItem(context, Icons.work, "Shifts View", ShiftSchedulePage()),
-      _buildMenuItem(context, Icons.sell, "Add Fuel Sales", AddSalesPage(updateFuelLevels, fuelLevels, tankCapacity)), // NEW MENU ITEM
+      _buildMenuItem(context, Icons.sell, "Add Fuel Sales", AddSalesPage(updateFuelLevels, fuelLevels, tankCapacity)),
+      _buildMenuItem(context, Icons.manage_accounts, "req shift", ShiftRequestPage(),
+      ),
     ];
 
     if (userRole == "admin") {
       // Only admins can see these options
       menuItems.add(_buildMenuItem(context, Icons.settings, "Management", ManagementMenu()));
+      menuItems.add(_buildMenuItem(context, Icons.insert_chart, "Reports", ReportsPage()));
     }
 
     menuItems.add(_buildMenuItem(context, Icons.logout, "Logout", null, isLogout: true));

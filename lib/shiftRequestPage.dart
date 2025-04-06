@@ -1,128 +1,183 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
-class RequestShiftChangePage extends StatefulWidget {
-  const RequestShiftChangePage({super.key});
+class ShiftRequestPage extends StatefulWidget {
+  const ShiftRequestPage({super.key});
 
   @override
-  _RequestShiftChangePageState createState() => _RequestShiftChangePageState();
+  _ShiftRequestPageState createState() => _ShiftRequestPageState();
 }
 
-class _RequestShiftChangePageState extends State<RequestShiftChangePage> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _dateController = TextEditingController();
-  final TextEditingController _shiftTypeController = TextEditingController();
-  final TextEditingController _mobileNumberController = TextEditingController();
-  final TextEditingController _reasonController = TextEditingController();
+class _ShiftRequestPageState extends State<ShiftRequestPage> {
+  List<Map<String, dynamic>> employees = [];
+  String? selectedEmployee;
+  String? selectedShiftType;
+  DateTime selectedDate = DateTime.now();
+
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEmployees();
+  }
+
+  Future<void> _fetchEmployees() async {
+    final response = await http.get(Uri.parse("http://10.0.2.2:5000/get-employees"));
+
+    if (response.statusCode == 200) {
+      List<Map<String, dynamic>> employeeList = List<Map<String, dynamic>>.from(json.decode(response.body));
+      setState(() {
+        employees = employeeList;
+        if (employees.isNotEmpty) {
+          selectedEmployee = employees.first['name']; // Set default employee
+        }
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to load employees")));
+    }
+  }
+
+  Future<void> _submitForm() async {
+    if (selectedEmployee == null || selectedShiftType == null || _descriptionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all fields")));
+      return;
+    }
+
+    String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:5000/shift-requests"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "pumper_name": selectedEmployee,
+        "shift_type": selectedShiftType,
+        "description": _descriptionController.text,
+        "date": formattedDate,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Shift request submitted successfully!")));
+      _descriptionController.clear(); // Clear the description field
+      Navigator.pop(context); // Navigate back after submission
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to submit shift request")));
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2024),
+      lastDate: DateTime(2030),
+    );
+
+    if (pickedDate != null && pickedDate != selectedDate) {
+      setState(() {
+        selectedDate = pickedDate;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Requesting a Change",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: Text("Request Shift Change", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blue.shade900,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context); // Navigate back to the previous screen
-          },
+          onPressed: () => Navigator.pop(context),
         ),
-        backgroundColor: Colors.blue.shade900,
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
-          // Wrap the form in SingleChildScrollView
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildLabel("Employee Name :"),
-                _buildTextField(_nameController, "Enter your name"),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date Picker
+              ListTile(
+                title: Text("Select Date: ${DateFormat('yyyy-MM-dd').format(selectedDate)}"),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () => _selectDate(context),
+              ),
 
-                _buildLabel("Date :"),
-                _buildTextField(_dateController, "Enter date (YYYY-MM-DD)"),
-
-                _buildLabel("Shift Type :"),
-                _buildTextField(_shiftTypeController, "Enter shift type"),
-
-                _buildLabel("Mobile Number :"),
-                _buildTextField(
-                  _mobileNumberController,
-                  "Enter your mobile number",
+              // Employee Dropdown
+              if (employees.isEmpty)
+                Center(child: CircularProgressIndicator())
+              else
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(labelText: "Select Employee"),
+                  value: selectedEmployee,
+                  items: employees.map((e) {
+                    return DropdownMenuItem<String>(
+                      value: e['name'],
+                      child: Text(e['name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedEmployee = value;
+                    });
+                  },
+                  validator: (value) => value == null ? 'Please select an employee' : null,
                 ),
 
-                _buildLabel("Reason :"),
-                _buildTextField(
-                  _reasonController,
-                  "Enter reason for change",
-                  maxLines: 4,
-                ),
+              // Shift Type Dropdown
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: "Select Shift Type"),
+                value: selectedShiftType,
+                items: [
+                  "Day Shift (7.30 AM - 7.30 PM) 🌞",
+                  "Night Shift (7.30 PM - 7.30 AM) 🌙",
+                ].map((String shift) {
+                  return DropdownMenuItem<String>(
+                    value: shift,
+                    child: Text(shift),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedShiftType = value;
+                  });
+                },
+                validator: (value) => value == null ? 'Please select a shift type' : null,
+              ),
 
-                SizedBox(height: 20),
-                _buildSubmitButton(),
-              ],
-            ),
+              // Reason Input Field
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(labelText: "Reason for Change"),
+                maxLines: 4,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a reason';
+                  } else if (value.length < 10) {
+                    return 'Minimum 10 characters required';
+                  }
+                  return null;
+                },
+              ),
+
+              SizedBox(height: 20),
+
+              // Submit Button
+              ElevatedButton(
+                onPressed: _submitForm,
+                child: Text("Submit Request"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade900,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: EdgeInsets.only(top: 10, bottom: 5),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-          color: Colors.blue.shade900,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller,
-    String hint, {
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hint,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        filled: true,
-        fillColor: Colors.grey.shade300,
-      ),
-      maxLines: maxLines,
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            // Handle form submission
-            print("Request Submitted");
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue.shade900,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          elevation: 4,
-        ),
-        child: Text(
-          "Submit",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );

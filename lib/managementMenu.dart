@@ -1,9 +1,11 @@
+import 'package:fillifyapp/UserRoleManagement.dart';
 import 'package:fillifyapp/fuelStockCalibrate.dart';
 import 'package:flutter/material.dart';
 import 'EmployeePage.dart';
 import 'assignShifts.dart';
 import 'addfuelstock.dart';
-import 'fuelStockCalibrate.dart';
+import 'shiftRequestPage.dart';
+import 'shiftRequestView.dart';
 
 class ManagementMenu extends StatelessWidget {
   const ManagementMenu({super.key});
@@ -54,6 +56,18 @@ class ManagementMenu extends StatelessWidget {
               Icons.compass_calibration,
               "Calibrate Fuel Stock",
               fuelStockCalibratePage(),
+            ),
+            _buildMenuItem(
+              context,
+              Icons.admin_panel_settings,
+              "Manage Users",
+              UserRoleManagement(),
+            ),
+            _buildMenuItem(
+              context,
+              Icons.manage_accounts,
+              "Update shift",
+              ShiftRequestViewPage(),
             ),
           ],
         ),
